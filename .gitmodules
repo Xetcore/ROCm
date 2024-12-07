@@ -46,18 +46,9 @@
 [submodule "libs/HIPIFY"]
 	path = libs/HIPIFY
 	url = ../HIPIFY
-[submodule "libs/HIPCC"]
-	path = libs/HIPCC
-	url = ../HIPCC
 [submodule "libs/llvm-project"]
 	path = libs/llvm-project
 	url = ../llvm-project
-[submodule "libs/ROCm-Device-Libs"]
-	path = libs/ROCm-Device-Libs
-	url = ../ROCm-Device-Libs
-[submodule "libs/ROCm-CompilerSupport"]
-	path = libs/ROCm-CompilerSupport
-	url = ../ROCm-CompilerSupport
 [submodule "libs/half"]
 	path = libs/half
 	url = ../half
