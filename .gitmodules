@@ -154,12 +154,6 @@
 [submodule "libs/rocDecode"]
 	path = libs/rocDecode
 	url = ../rocDecode
-[submodule "libs/omnitrace"]
-	path = libs/omnitrace
-	url = ../omnitrace
-[submodule "libs/omniperf"]
-	path = libs/omniperf
-	url = ../omniperf
 [submodule "libs/rocprofiler-sdk"]
 	path = libs/rocprofiler-sdk
 	url = ../rocprofiler-sdk
@@ -172,3 +166,18 @@
 [submodule "libs/rocAL"]
 	path = libs/rocAL
 	url = ../rocAL
+[submodule "libs/rocprofiler-register"]
+	path = libs/rocprofiler-register
+	url = ../rocprofiler-register
+[submodule "libs/rocprofiler-compute"]
+	path = libs/rocprofiler-compute
+	url = ../rocprofiler-compute
+[submodule "libs/rocprofiler-systems"]
+	path = libs/rocprofiler-systems
+	url = ../rocprofiler-systems
+[submodule "libs/hip-tests"]
+	path = libs/hip-tests
+	url = ../hip-tests
+[submodule "libs/rocJPEG"]
+	path = libs/rocJPEG
+	url = ../rocJPEG
