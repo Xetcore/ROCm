@@ -9,6 +9,12 @@ parameters:
     - gfx90a-staging:
       target: gfx90a
       source: staging
+    - gfx942-staging:
+      target: gfx942
+      source: mainline
+    - gfx90a-staging:
+      target: gfx90a
+      source: mainline
 - name: rocmDependencies
   type: object
   default:
@@ -109,6 +115,7 @@ jobs:
         dependencySource: ${{ job.source }}
         dependencyList: ${{ parameters.rocmDependencies }}
         gpuTarget: ${{ job.target }}
+        continueOnDownloadError: true
         skipLibraryLinking: true
         skipLlvmSymlink: true
     - script: df -h
