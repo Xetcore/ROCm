@@ -242,6 +242,7 @@ Makefile
 Makefiles
 Matplotlib
 Matrox
+MaxText
 Megatrends
 Megatron
 Mellanox
@@ -381,6 +382,7 @@ SIMDs
 SKU
 SKUs
 SLES
+SLURM
 SMEM
 SMI
 SMT
@@ -574,6 +576,7 @@ distro
 distros
 dkms
 dtype
+eb
 el
 embeddings
 enablement
@@ -627,6 +630,7 @@ hipify
 hipsolver
 hipsparse
 hlist
+hostname
 hotspotting
 hpc
 hpp
