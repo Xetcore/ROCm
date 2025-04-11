@@ -12,14 +12,14 @@ subtrees:
   - file: compatibility/compatibility-matrix.rst
     title: Compatibility matrix
     entries:
-    - url: https://rocm.docs.amd.com/projects/install-on-linux/en/${branch}/reference/system-requirements.html
+    - url: https://rocm.docs.amd.com/projects/install-on-linux-internal/en/latest/reference/system-requirements.html
       title: Linux system requirements
     - url: https://rocm.docs.amd.com/projects/install-on-windows/en/${branch}/reference/system-requirements.html
       title: Windows system requirements
 
 - caption: Install
   entries:
-  - url: https://rocm.docs.amd.com/projects/install-on-linux/en/${branch}/
+  - url: https://rocm.docs.amd.com/projects/install-on-linux-internal/en/latest/
     title: ROCm on Linux
   - url: https://rocm.docs.amd.com/projects/install-on-windows/en/${branch}/
     title: HIP SDK on Windows
@@ -165,16 +165,16 @@ subtrees:
 
 - caption: Reference
   entries:
-    - file: reference/api-libraries.md
-      title: ROCm libraries
-    - file: reference/rocm-tools.md
-      title: ROCm tools, compilers, and runtimes
-    - file: reference/gpu-arch-specs.rst
-      title: Hardware specifications
-    - file: reference/precision-support.rst
-      title: Precision support
-    - file: reference/graph-safe-support.rst
-      title: Graph safe support
+  - file: reference/api-libraries.md
+    title: ROCm libraries
+  - file: reference/rocm-tools.md
+    title: ROCm tools, compilers, and runtimes
+  - file: reference/gpu-arch-specs.rst
+  - file: reference/gpu-atomics-operation.rst
+  - file: reference/precision-support.rst
+    title: Precision support
+  - file: reference/graph-safe-support.rst
+    title: Graph safe support
 
 - caption: Contribute
   entries:

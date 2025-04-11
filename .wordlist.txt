@@ -18,12 +18,14 @@ APBDIS
 APIC
 APIs
 APU
+APUs
 ASIC
 ASICs
 ASan
 ASAN
 ASm
 ATI
+atomicRMW
 AddressSanitizer
 AlexNet
 Andrej
@@ -36,6 +38,7 @@ Blit
 Blockwise
 Bluefield
 Bootloader
+CAS
 CCD
 CDNA
 CHTML
@@ -78,6 +81,8 @@ DBRX
 DDR
 DF
 DGEMM
+dGPU
+dGPUs
 DIMM
 DKMS
 DL
@@ -98,6 +103,7 @@ DeepSpeed
 Dependabot
 Deprecations
 DevCap
+DirectX
 Dockerfile
 Doxygen
 ELMo
@@ -137,6 +143,7 @@ Gemma
 GiB
 GIM
 GL
+Glibc
 GLXT
 Gloo
 GMI
@@ -177,6 +184,7 @@ IDE
 IDEs
 IFWI
 IMDb
+IncDec
 IOMMU
 IOP
 IOPM
@@ -273,6 +281,7 @@ NaN
 Nano
 Navi
 Noncoherently
+NoReturn
 NousResearch's
 NumPy
 OAM
@@ -505,15 +514,19 @@ bfloat
 bilinear
 bitcode
 bitsandbytes
+bitwise
+Bitwise
 blit
 bootloader
 boson
 bosons
 br
+BrainFloat
 buildable
 bursty
 bzip
 cacheable
+carveout
 cd
 centos
 centric
@@ -593,6 +606,7 @@ ffmpeg
 filesystem
 fortran
 fp
+framebuffer
 gRPC
 galb
 gcc
@@ -676,6 +690,7 @@ macOS
 matchers
 microarchitecture
 migraphx
+migratable
 miopen
 miopengemm
 mivisionx
@@ -688,6 +703,9 @@ mvffr
 namespace
 namespaces
 nanoGPT
+NCS
+NOP
+NVLink
 num
 numref
 ocl
@@ -839,6 +857,7 @@ tracebacks
 txt
 uarch
 uncached
+uncacheable
 uncorrectable
 underoptimized
 unhandled
@@ -883,6 +902,7 @@ wrreq
 wzo
 xargs
 xGMI
+xPacked
 xz
 yaml
 ysvmadyb
