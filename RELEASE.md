@@ -1645,6 +1645,18 @@ Alternatively, you can modify the `rocprof` script located at `/opt/rocm-6.x.x/b
 ROCPROFV1_LD_PRELOAD=$MY_HSA_TOOLS_LIB
 ```
 
+### Applications using HIP runtime might stop the graph capture process
+
+Applications using the HIP runtime might stop the graph capture process if the HIP runtime detects an invalid stale state from a previous capture on the same HIP stream. Resetting the stale set for every new capture in the HIP runtime can resolve the issue. The issue will be fixed in a future ROCm release.
+
+### Incorrect computation results in hipBLASLt for specific transpose configuration
+
+When running the hipBLASLt library using the transpose configuration (TT) with FP32 and XF32 data types, you might receive incorrect computation results. As a workaround, select alternative solutions from the list returned by `hipblasLtMatmulAlgoGetHeuristic()`. Verify the result to identify the correct alternative solution. The issue will be fixed in a future ROCm release.
+
+### Incorrect result in RCCL when using LL protocol in graph mode with MSCCL++ enabled
+
+In RCCL library, you might receive incorrect results in All-Reduce collective API, when using Link Layer (LL) protocol in graph mode while MSCCL++ is enabled. This issue occurs when the protocal state information are updated in the host-side code instead of in a kernel, which is not supported in graph mode. As a workaround, you can disable MSCCL++ by setting the environment variable `RCCL_MSCCLPP_ENABLE=0`. However, consider that this might negatively impact the performance. The issue will be fixed in a future ROCm release. 
+
 ## ROCm resolved issues
 
 The following are previously known issues resolved in this release. For resolved issues related to
