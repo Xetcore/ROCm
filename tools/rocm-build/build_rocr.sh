@@ -255,7 +255,7 @@ print_output_directory() {
 # Common variables
 target="build"
 
-kfdtest_target="yes"
+kfdtest_target="no"
 rocrtst_target="yes"
 rocr_target="ON"
 
