@@ -1708,7 +1708,7 @@ and will be disabled in a future release.
 
 * The `__AMDGCN_WAVEFRONT_SIZE__` macro and `__AMDGCN_WAVEFRONT_SIZE` alias will be removed in an upcoming release.
   It is recommended to remove any use of this macro. For more information, see
-  [AMDGPU support](https://rocm.docs.amd.com/projects/llvm-project/en/docs-6.3.2/LLVM/clang/html/AMDGPUSupport.html).
+  [AMDGPU support](https://rocm.docs.amd.com/projects/llvm-project/en/docs-6.4.0/LLVM/clang/html/AMDGPUSupport.html).
 * `warpSize` will only be available as a non-`constexpr` variable. Where required,
   the wavefront size should be queried via the `warpSize` variable in device code,
   or via `hipGetDeviceProperties` in host code. Neither of these will result in a compile-time constant. 
