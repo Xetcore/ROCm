@@ -87,7 +87,6 @@ endef
 
 $(call adddep,amd_smi_lib,${ASAN_DEP})
 $(call adddep,aqlprofile,${ASAN_DEP} rocr)
-$(call adddep,aqlprofiletest,lightning rocminfo aqlprofile opencl_on_rocclr hip_on_rocclr)
 $(call adddep,comgr,lightning devicelibs)
 $(call adddep,dbgapi,rocr comgr)
 $(call adddep,devicelibs,lightning)
