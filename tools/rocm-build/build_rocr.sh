@@ -256,7 +256,7 @@ print_output_directory() {
 target="build"
 
 kfdtest_target="no"
-rocrtst_target="yes"
+rocrtst_target="no"
 rocr_target="ON"
 
 package_root="$(getPackageRoot)"
