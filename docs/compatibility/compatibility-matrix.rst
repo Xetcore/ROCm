@@ -17,7 +17,7 @@ You can also refer to the :ref:`past versions of ROCm compatibility matrix<past-
       :stub-columns: 1
 
       :doc:`Operating Systems <rocm-install-on-linux:reference/system-requirements>`, "Ubuntu 24.04","",""
-      ,"Ubuntu 22.04.5 [#Ubuntu220405]_, 22.04.4","Ubuntu 22.04.4, 22.04.3","Ubuntu 22.04.4, 22.04.3"
+      ,"Ubuntu 22.04.5 [#Ubuntu220405]_, 22.04.4","Ubuntu 22.04.5 [#Ubuntu220405]_, 22.04.4, 22.04.3","Ubuntu 22.04.4, 22.04.3"
       ,,"Ubuntu 20.04.6, 20.04.5","Ubuntu 20.04.6, 20.04.5"
       ,"RHEL 9.4, 9.3","RHEL 9.4 [#red-hat94]_, 9.3, 9.2","RHEL 9.3, 9.2"
       ,"RHEL 8.10, 8.9","RHEL 8.9, 8.8","RHEL 8.9, 8.8"
@@ -134,7 +134,7 @@ You can also refer to the :ref:`past versions of ROCm compatibility matrix<past-
 .. rubric:: Footnotes
 
 .. [#Ubuntu220405] Preview support of Ubuntu 22.04.5 only
-.. [#red-hat94] RHEL 9.4 is supported only on AMD Instinct MI300A.
+.. [#red-hat94] **For ROCm 6.1** - RHEL 9.4 is supported only on AMD Instinct MI300A.
 .. [#oracle89] Oracle Linux is supported only on AMD Instinct MI300X.
 .. [#mi300_620] **For ROCm 6.2.0** - MI300X (gfx942) is supported on listed operating systems *except* Ubuntu 22.04.5 [6.8 HWE] and Ubuntu 22.04.4 [6.5 HWE].
 .. [#mi300_612] **For ROCm 6.1.2** - MI300A (gfx942) is supported on Ubuntu 22.04.4, RHEL 9.4, RHEL 9.3, RHEL 8.9, and SLES 15 SP5. MI300X (gfx942) is only supported on Ubuntu 22.04.4 and Oracle Linux.
@@ -161,14 +161,14 @@ Expand for full historical view of:
 
    .. csv-table::
       :file: ../data/reference/compatibility-matrix-historical-6.0.csv
-      :widths: 20,10,10,10,10,10,10
+      :widths: 20,10,10,10,10,10,10,10
       :header-rows: 1
       :stub-columns: 1
    
    .. rubric:: Footnotes
 
    .. [#Ubuntu220405-past-60] Preview support of Ubuntu 22.04.5 only
-   .. [#red-hat94-past-60] RHEL 9.4 is supported only on AMD Instinct MI300A.
+   .. [#red-hat94-past-60] **For ROCm 6.1** - RHEL 9.4 is supported only on AMD Instinct MI300A.
    .. [#oracle89-past-60] Oracle Linux is supported only on AMD Instinct MI300X.
    .. [#mi300_620-past-60] **For ROCm 6.2.0** - MI300X (gfx942) is supported on listed operating systems *except* Ubuntu 22.04.5 [6.8 HWE] and Ubuntu 22.04.4 [6.5 HWE].
    .. [#mi300_612-past-60] **For ROCm 6.1.2** - MI300A (gfx942) is supported on Ubuntu 22.04.4, RHEL 9.4, RHEL 9.3, RHEL 8.9, and SLES 15 SP5. MI300X (gfx942) is only supported on Ubuntu 22.04.4 and Oracle Linux.
