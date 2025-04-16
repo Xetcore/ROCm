@@ -1,9 +1,6 @@
 [submodule "libs/ROCK-Kernel-Driver"]
 	path = libs/ROCK-Kernel-Driver
 	url = ../ROCK-Kernel-Driver
-[submodule "libs/ROCT-Thunk-Interface"]
-	path = libs/ROCT-Thunk-Interface
-	url = ../ROCT-Thunk-Interface
 [submodule "libs/ROCR-Runtime"]
 	path = libs/ROCR-Runtime
 	url = ../ROCR-Runtime
@@ -181,3 +178,15 @@
 [submodule "libs/rocJPEG"]
 	path = libs/rocJPEG
 	url = ../rocJPEG
+[submodule "libs/spirv-llvm-translator"]
+	path = libs/spirv-llvm-translator
+	url = ../spirv-llvm-translator
+[submodule "libs/hipBLAS-common"]
+	path = libs/hipBLAS-common
+	url = ../hipBLAS-common
+[submodule "libs/rocSHMEM"]
+	path = libs/rocSHMEM
+	url = ../rocSHMEM
+[submodule "libs/TransferBench"]
+	path = libs/TransferBench
+	url = ../TransferBench
