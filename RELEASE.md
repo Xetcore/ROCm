@@ -1660,6 +1660,14 @@ When running the hipBLASLt library using the transpose configuration (TT) with F
 
 In RCCL library, you might receive incorrect results in All-Reduce collective API, when using Link Layer (LL) protocol in graph mode while MSCCL++ is enabled. This issue occurs when the protocal state information are updated in the host-side code instead of in a kernel, which is not supported in graph mode. As a workaround, you can disable MSCCL++ by setting the environment variable `RCCL_MSCCLPP_ENABLE=0`. However, consider that this might negatively impact the performance. The issue will be fixed in a future ROCm release. See [GitHub issue #4616](https://github.com/ROCm/ROCm/issues/4616).
 
+### ROCm installation might fail in some Linux distribution kernels
+
+ROCm 6.4.0 might encounter an installation issue on some Linux distribution kernels, including the [patch](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=9011e49d54dcc7653ebb8a1e05b5badb5ecfa9f9) that adds more restrictions for symbol lookups. This change breaks the standard symbol lookup methods in the kernel.
+
+As a result, the AMD kernel driver Dynamic Kernel Mode Support (DKMS) package might fail to install when the symbols required to use the PeerDirect API with Mellanox NICs are not found. In the event of such a failure, the AMD DKMS package attempts to locate these symbols directly from the Mellanox installation. However, for non-standard Mellanox NIC installations, the AMD DKMS package might not be able to locate these symbols.
+
+This issue will be fixed in a future ROCm release. As a workaround, you can run the script that allows the DKMS package to locate Mellanox symbols from the Mellanox installation without you requiring to update the new DKMS package. For downloading the script and getting more details on the issue and workaround, see [GitHub issue #4671](https://github.com/ROCm/ROCm/issues/4671).
+
 ## ROCm resolved issues
 
 The following are previously known issues resolved in this release. For resolved issues related to
