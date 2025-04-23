@@ -53,7 +53,7 @@ parameters:
     aomp-extras:
       pipelineId: $(AOMP_EXTRAS_PIPELINE_ID)
       stagingBranch: aomp-dev
-      mainlineBranch: aomp-dev
+      mainlineBranch: amd-mainline
       hasGpuTarget: false
     aomp:
       pipelineId: $(AOMP_PIPELINE_ID)

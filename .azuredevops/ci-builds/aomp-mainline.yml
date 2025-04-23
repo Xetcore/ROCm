@@ -40,3 +40,4 @@ jobs:
   - template: ${{ variables.CI_COMPONENT_PATH }}/aomp.yml
     parameters:
       checkoutRepo: aomp_repo
+      checkoutRef: amd-mainline
