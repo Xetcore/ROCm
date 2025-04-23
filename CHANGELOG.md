@@ -3455,7 +3455,7 @@ See [issue #3499](https://github.com/ROCm/ROCm/issues/3499) on GitHub.
 
 - Error when running Omniperf with an application with command line arguments. As a workaround, create an
   intermediary script to call the application with the necessary arguments, then call the script with Omniperf. This
-  issue is fixed in a future release of Omniperf. See [#347](https://github.com/ROCm/omniperf/issues/347).
+  issue is fixed in a future release of Omniperf. See [#347](https://github.com/ROCm/rocprofiler-compute/issues/347).
 
 - Omniperf might not work with AMD Instinct MI300 accelerators out of the box, resulting in the following error:
   "*ERROR gfx942 is not enabled rocprofv1. Available profilers include: ['rocprofv2']*". As a workaround, add the
