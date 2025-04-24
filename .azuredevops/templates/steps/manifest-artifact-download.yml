@@ -1,0 +1,63 @@
+parameters:
+  - name: scriptBranch
+    type: string
+    default: 'develop'
+  - name: gpuTarget
+    type: string
+    default: no_target
+    values:
+      - no_target
+      - gfx90a
+      - gfx942
+  - name: manifestUrl
+    type: string
+    default: ''
+  - name: downloadDir
+    type: string
+    default: $(Pipeline.Workspace)/d
+
+steps:
+  - task: Bash@3
+    displayName: Set up manifest artifact script
+    inputs:
+      targetType: 'inline'
+      script: |
+        mkdir -p ${{ parameters.downloadDir }}
+        wget https://raw.githubusercontent.com/ROCm/ROCm/refs/heads/${{ parameters.scriptBranch }}/.azuredevops/scripts/download-manifest-artifacts/requirements.txt
+        wget https://raw.githubusercontent.com/ROCm/ROCm/refs/heads/${{ parameters.scriptBranch }}/.azuredevops/scripts/download-manifest-artifacts/download-manifest-artifacts.py
+        python3 -m pip install -r ./requirements.txt
+  - task: Bash@3
+    displayName: Download manifest artifacts
+    inputs:
+      targetType: 'inline'
+      script: |
+        python3 ./download-manifest-artifacts.py \
+          --target="${{ parameters.gpuTarget }}" \
+          --manifest="${{ parameters.manifestUrl }}" \
+          --output_dir="${{ parameters.downloadDir }}"
+  - task: ExtractFiles@1
+    displayName: Extract manifest artifacts 1/2
+    inputs:
+      archiveFilePatterns: ${{ parameters.downloadDir }}/**/*.zip
+      destinationFolder: ${{ parameters.downloadDir }}
+      cleanDestinationFolder: false
+      overwriteExistingFiles: true
+  - task: ExtractFiles@1
+    displayName: Extract manifest artifacts 2/2
+    inputs:
+      archiveFilePatterns: ${{ parameters.downloadDir }}/**/*.tar.gz
+      destinationFolder: $(Agent.BuildDirectory)/rocm
+      cleanDestinationFolder: false
+      overwriteExistingFiles: true
+  - task: DeleteFiles@1
+    displayName: Clean up manifest artifacts 1/2
+    inputs:
+      SourceFolder: ${{ parameters.downloadDir }}
+      Contents: '/**/*.zip'
+      RemoveDotFiles: true
+  - task: DeleteFiles@1
+    displayName: Clean up manifest artifacts 2/2
+    inputs:
+      SourceFolder: ${{ parameters.downloadDir }}
+      Contents: '/**/*.tar.gz'
+      RemoveDotFiles: true

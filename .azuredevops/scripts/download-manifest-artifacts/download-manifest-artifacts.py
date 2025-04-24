@@ -17,34 +17,46 @@ def _get_builds(entry, gpu_target, already_downloaded, output):
         print('Skipping, already downloaded from build ' + entry['buildId'])
         return already_downloaded
 
-    artifacts_url = f"https://dev.azure.com/ROCm-CI/ROCm-CI/_apis/build/builds/{entry['buildId']}/artifacts?api-version=7.1"
-    artifacts = requests.get(artifacts_url).json()
-    for artifact in artifacts['value']:
-        if 'gfx' in artifact['name'] and gpu_target not in artifact['name']:
-            continue
+    retries = 3
+    for i in range(retries):
+        try:
+            artifacts_url = f"https://dev.azure.com/ROCm-CI/ROCm-CI/_apis/build/builds/{entry['buildId']}/artifacts?api-version=7.1"
+            artifacts = requests.get(artifacts_url).json()
+            for artifact in artifacts['value']:
+                if 'gfx' in artifact['name'] and gpu_target not in artifact['name']:
+                    continue
 
-        print('Artifact name: ' + artifact['name'])
-        print('File size: ~' +
-              str(round(int(artifact['resource']['properties']['artifactsize'])/1000000, 2)) + ' MB')
-        download_url = f"{artifact['resource']['downloadUrl']}"
-        download = requests.get(download_url)
+                print('Artifact name: ' + artifact['name'])
+                print('File size: ~' +
+                    str(round(int(artifact['resource']['properties']['artifactsize'])/1000000, 2)) + ' MB')
+                download_url = f"{artifact['resource']['downloadUrl']}"
+                download = requests.get(download_url)
 
-        zip_file = Path(output) / f"{artifact['name']}.zip"
-        with open(zip_file, 'wb') as f:
-            f.write(download.content)
-        already_downloaded[entry['buildId']] = True
-
-    return already_downloaded
+                zip_file = Path(output) / f"{artifact['name']}.zip"
+                with open(zip_file, 'wb') as f:
+                    f.write(download.content)
+                already_downloaded[entry['buildId']] = True
+            return already_downloaded
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading artifacts: {e}")
+            if i < retries - 1:
+                print("Retrying...")
+            else:
+                print(f"Failed to download after {retries} attempts.")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            break
 
 def main():
     parser = argparse.ArgumentParser(description="Command line tool for downloading external ci artifacts")
-    parser.add_argument('--target', type=str, dest="target", choices=["gfx90a", "gfx942"], help="Target gfx")
+    parser.add_argument('--target', type=str, dest="target", choices=["gfx90a", "gfx942", "no_target"], help="Target gfx")
     parser.add_argument('--manifest', type=str, dest="manifest", help='JSON manifest url or path to local manifest')
     parser.add_argument('--output_dir', type=str, dest="output", help='Path to download directory')
     args = parser.parse_args()
 
     manifest = args.manifest
     gpu_target = args.target
+    output = args.output
 
     if not gpu_target:
         print("Enter the GPU target (gfx942, gfx90a)")
@@ -62,7 +74,7 @@ def main():
 
     entries = [e for e in data['current']]
     entries.extend([e for e in data['dependencies']])
-    get_builds(entries, gpu_target, args.output)
+    get_builds(entries, gpu_target, output)
 
 if __name__ == "__main__":
     main()
