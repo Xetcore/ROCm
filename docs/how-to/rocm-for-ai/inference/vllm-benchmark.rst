@@ -34,7 +34,7 @@ vLLM inference performance testing
 
    .. _vllm-benchmark-available-models:
 
-   Available models
+   Supported models
    ================
 
    .. raw:: html
@@ -182,6 +182,25 @@ vLLM inference performance testing
             Although the :ref:`available models <vllm-benchmark-available-models>` are preconfigured
             to collect latency and throughput performance data, you can also change the benchmarking
             parameters. See the standalone benchmarking tab for more information.
+
+            {% if model.tunableop %}
+
+            .. note::
+
+               For improved performance, consider enabling :ref:`PyTorch TunableOp <mi300x-tunableop>`.
+               TunableOp automatically explores different implementations and configurations of certain PyTorch
+               operators to find the fastest one for your hardware.
+
+               By default, ``{{model.mad_tag}}`` runs with TunableOp disabled
+               (see
+               `<https://github.com/ROCm/MAD/blob/develop/models.json>`__). To
+               enable it, edit the default run behavior in the ``models.json``
+               configuration before running inference -- update the model's run
+               ``args`` by changing ``--tunableop off`` to ``--tunableop on``.
+
+               Enabling TunableOp triggers a two-pass run -- a warm-up followed by the performance-collection run.
+
+            {% endif %}
 
          .. tab-item:: Standalone benchmarking
 
