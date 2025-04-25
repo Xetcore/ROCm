@@ -685,8 +685,8 @@ inference.
       - 2.5
     * - Gradient scaling
       - To prevent underflow, “gradient scaling” multiplies the network’s
-        losses by a scale factor and invokes a backward pass on the scaled
-        losses. The same factor then scales gradients flowing backward through
+        loss by a scale factor and invokes a backward pass on the scaled
+        loss. The same factor then scales gradients flowing backward through
         the network. In other words, gradient values have a larger magnitude so
         that they don’t flush to zero.
       - 1.9
