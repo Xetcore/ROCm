@@ -95,7 +95,7 @@ Docker image compatibility
 
 AMD validates and publishes `PyTorch images <https://hub.docker.com/r/rocm/pytorch>`_
 with ROCm backends on Docker Hub. The following Docker image tags and associated
-inventories were tested on `ROCm 6.4.0 <https://repo.radeon.com/rocm/apt/6.4.0/>`_.
+inventories were tested on `ROCm 6.4.0 <https://repo.radeon.com/rocm/apt/6.4/>`_.
 Click |docker-icon| to view the image on Docker Hub.
 
 .. list-table:: PyTorch Docker image components
