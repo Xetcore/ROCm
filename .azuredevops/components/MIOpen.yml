@@ -125,6 +125,9 @@ jobs:
           -DMIOPEN_ENABLE_AI_IMMED_MODE_FALLBACK=OFF
           -DCMAKE_BUILD_TYPE=Release
           -DBUILD_TESTING=ON
+          -Drocblas_VERSION_MAJOR=5
+          -Drocblas_VERSION_MINOR=0
+          -Drocblas_VERSION_PATCH=0
           -GNinja
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/manifest.yml
       parameters:
