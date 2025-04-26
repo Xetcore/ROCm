@@ -762,10 +762,10 @@ and in-depth descriptions.
 
 #### Changed
 
-* `roc-obj` tools is deprecated and will be removed in an upcoming release.
+* The `roc-obj` tools have been deprecated and will be removed in a future release.
 
-    - Perl package installation is not required, and users will need to install this themselves if they want to.
-    - Support for ROCm Object tooling has moved into `llvm-objdump` provided by package `rocm-llvm`.
+   -	`llvm-objdump`, `llvm-objcopy`, and `llvm-readobj` will be enhanced to provide similar functionality as that provided by the `roc-obj` tools . The LLVM tools are available in the `rocm-llvm` pkg.
+   -	While not related to the deprecation, also note that the `roc-obj` tools’ package dependency on Perl has been changed to recommended. It is the user’s responsibility to install Perl to use these tools.
 
 * SDMA retainer logic is removed for engine selection in operation of runtime buffer copy.
 
