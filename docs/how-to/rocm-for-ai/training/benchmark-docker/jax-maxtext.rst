@@ -12,7 +12,7 @@ ROCm is an optimized fork of the upstream
 `<https://github.com/AI-Hypercomputer/maxtext>`__ enabling efficient AI workloads
 on AMD MI300X series accelerators.
 
-The MaxText for ROCm training Docker (``rocm/jax-training:maxtext-v25.4``) image
+The MaxText for ROCm training Docker (``rocm/jax-training:maxtext-v25.5``) image
 provides a prebuilt environment for training on AMD Instinct MI300X and MI325X accelerators,
 including essential components like JAX, XLA, ROCm libraries, and MaxText utilities.
 It includes the following software components:
@@ -20,15 +20,15 @@ It includes the following software components:
 +--------------------------+--------------------------------+
 | Software component       | Version                        |
 +==========================+================================+
-| ROCm                     | 6.3.0                          |
+| ROCm                     | 6.3.4                          |
 +--------------------------+--------------------------------+
-| JAX                      | 0.4.31                         |
+| JAX                      | 0.4.35                         |
 +--------------------------+--------------------------------+
-| Python                   | 3.10                           |
+| Python                   | 3.10.12                        |
 +--------------------------+--------------------------------+
-| Transformer Engine       | 1.12.0.dev0+f81a3eb            |
+| Transformer Engine       | 1.12.0.dev0+b8b92dc            |
 +--------------------------+--------------------------------+
-| hipBLASLt                | git78ec8622                    |
+| hipBLASLt                | 0.13.0-ae9c477a                |
 +--------------------------+--------------------------------+
 
 Supported features and models
@@ -47,6 +47,8 @@ MaxText provides the following key features to train large language models effic
 .. _amd-maxtext-model-support:
 
 The following models are pre-optimized for performance on AMD Instinct MI300X series accelerators.
+
+* Llama 3.3 70B
 
 * Llama 3.1 8B
 
@@ -115,7 +117,7 @@ with RDMA, skip ahead to :ref:`amd-maxtext-download-docker`.
 
    a. Master address
 
-      Change `localhost` to the master node's resolvable hostname or IP address:
+      Change ``localhost`` to the master node's resolvable hostname or IP address:
 
       .. code-block:: bash
 
@@ -180,13 +182,15 @@ Download the Docker image
 
    .. code-block:: shell
 
-      docker pull rocm/jax-training:maxtext-v25.4
+      docker pull rocm/jax-training:maxtext-v25.5
 
-2. Run the Docker container.
+2. Use the following command to launch the Docker container. Note that the benchmarking scripts
+   used in the :ref:`following section <amd-maxtext-get-started>` automatically launch the Docker container
+   and execute the benchmark.
 
    .. code-block:: shell
 
-      docker run -it --device /dev/dri --device /dev/kfd --network host --ipc host --group-add video --cap-add SYS_PTRACE --security-opt seccomp=unconfined --privileged -v $HOME/.ssh:/root/.ssh --shm-size 128G --name maxtext_training rocm/jax-training:maxtext-v25.4
+      docker run -it --device /dev/dri --device /dev/kfd --network host --ipc host --group-add video --cap-add SYS_PTRACE --security-opt seccomp=unconfined --privileged -v $HOME/.ssh:/root/.ssh --shm-size 128G --name maxtext_training rocm/jax-training:maxtext-v25.5
 
 .. _amd-maxtext-get-started:
 
@@ -219,7 +223,9 @@ Single node training benchmarking examples
 
   Run the single node training benchmark:
 
-  IMAGE="rocm/jax-training:maxtext-v25.4" bash ./llama2_7b.sh
+  .. code-block:: shell
+
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./llama2_7b.sh
 
 * Example 2: Single node training with Llama 2 70B
 
@@ -233,7 +239,7 @@ Single node training benchmarking examples
 
   .. code-block:: shell
 
-     IMAGE="rocm/jax-training:maxtext-v25.4" bash ./llama2_70b.sh
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./llama2_70b.sh
 
 * Example 3: Single node training with Llama 3 8B
 
@@ -247,7 +253,7 @@ Single node training benchmarking examples
 
   .. code-block:: shell
 
-     IMAGE="rocm/jax-training:maxtext-v25.4" bash ./llama3_8b.sh
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./llama3_8b.sh
 
 * Example 4: Single node training with Llama 3 70B
 
@@ -261,9 +267,23 @@ Single node training benchmarking examples
 
   .. code-block:: shell
 
-     IMAGE="rocm/jax-training:maxtext-v25.4" bash ./llama3_70b.sh
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./llama3_70b.sh
 
-* Example 5: Single node training with DeepSeek V2 16B
+* Example 5: Single node training with Llama 3.3 70B
+
+  Download the benchmarking script:
+
+  .. code-block:: shell
+
+     wget https://raw.githubusercontent.com/ROCm/maxtext/refs/heads/main/benchmarks/gpu-rocm/llama3.3_70b.sh
+
+  Run the single node training benchmark:
+
+  .. code-block:: shell
+
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./llama3.3_70b.sh
+
+* Example 6: Single node training with DeepSeek V2 16B
 
   Download the benchmarking script:
 
@@ -275,7 +295,7 @@ Single node training benchmarking examples
 
   .. code-block:: shell
 
-     IMAGE="rocm/jax-training:maxtext-v25.4" bash ./deepseek_v2_16b.sh
+     IMAGE="rocm/jax-training:maxtext-v25.5" bash ./deepseek_v2_16b.sh
 
   .. note::
 
@@ -343,3 +363,26 @@ own cluster setup.
   .. code-block:: shell
 
      sbatch -N <num_nodes> llama3_70b_multinode.sh
+
+Previous versions
+=================
+
+This table lists previous versions of the ROCm JAX MaxText Docker image for training
+performance testing. For detailed information about available models for
+benchmarking, see the version-specific documentation.
+
+.. list-table::
+   :header-rows: 1
+   :stub-columns: 1
+
+   * - Image version
+     - ROCm version
+     - JAX version
+     - Resources
+
+   * - 25.4
+     - 6.3.0
+     - 0.4.31
+     - 
+       * `Documentation <https://rocm.docs.amd.com/en/docs-6.3.3/how-to/rocm-for-ai/training/benchmark-docker/jax-maxtext.html>`_
+       * `Docker Hub <https://hub.docker.com/layers/rocm/jax-training/maxtext-v25.4/images/sha256-fb3eb71cd74298a7b3044b7130cf84113f14d518ff05a2cd625c11ea5f6a7b01>`_
