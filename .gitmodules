@@ -1,7 +1,3 @@
-[submodule "submodule-srcs/ROCK-Kernel-Driver"]
-	path = submodule-srcs/ROCK-Kernel-Driver
-	url = https://github.com/rocm/ROCK-Kernel-Driver
-	branch = release/rocm-rel-6.4
 [submodule "submodule-srcs/ROCR-Runtime"]
 	path = submodule-srcs/ROCR-Runtime
 	url = https://github.com/rocm/ROCR-Runtime
@@ -250,3 +246,6 @@
 	path = submodule-srcs/openmp-extras/aomp-extras
 	url = https://github.com/rocm/aomp-extras
 	branch = release/rocm-rel-6.4
+[submodule "submodule-srcs/ROCK-Kernel-Driver"]
+	path = submodule-srcs/ROCK-Kernel-Driver
+	url = https://github.com/rocm/ROCK-Kernel-Driver
