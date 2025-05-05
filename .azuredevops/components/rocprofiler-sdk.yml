@@ -36,7 +36,7 @@ parameters:
     - pandas
     - perfetto
     - pycobertura
-    - "pytest>=6.2.5"
+    - '"pytest>=6.2.5"'
     - pyyaml
 - name: rocmDependencies
   type: object
@@ -91,7 +91,7 @@ jobs:
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
-        checkoutRef: ${{ parameters.checkoutRef }}
+        checkoutRef: amd-mainline
         dependencyList: ${{ parameters.rocmDependencies }}
         gpuTarget: ${{ job.target }}
         aggregatePipeline: ${{ parameters.aggregatePipeline }}
@@ -153,7 +153,7 @@ jobs:
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
-        checkoutRef: ${{ parameters.checkoutRef }}
+        checkoutRef: amd-mainline
         dependencyList: ${{ parameters.rocmDependencies }}
         gpuTarget: ${{ job.target }}
     - task: Bash@3
