@@ -61,7 +61,7 @@ parameters:
   default:
     - amdsmi
     - clr
-    - llvm-project
+    # - llvm-project
     - ROCdbgapi
     - ROCgdb
     - rocm-cmake
@@ -109,6 +109,10 @@ jobs:
   - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/checkout.yml
     parameters:
       checkoutRepo: llvm-project_repo
+  - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/local-artifact-download.yml
+    parameters:
+      buildType: specific
+      buildId: 28853
   - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
     parameters:
       checkoutRef: ${{ parameters.checkoutRef }}
@@ -143,7 +147,6 @@ jobs:
         -DLIBOMP_OMPD_SUPPORT=ON
         -DCMAKE_SKIP_INSTALL_RPATH=TRUE
         -DLLVM_MAIN_INCLUDE_DIR=$(Build.SourcesDirectory)/llvm-project/llvm/include
-        -DLIBOMP_FORTRAN_MODULES_COMPILER=$(Agent.BuildDirectory)/rocm/llvm/bin/flang
         -DLIBOMP_MODULES_INSTALL_PATH=$(Build.BinariesDirectory)/llvm/include/flang/
         -GNinja
   - task: Bash@3
