@@ -91,7 +91,7 @@ jobs:
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
-        checkoutRef: amd-mainline
+        checkoutRef: amd-staging
         dependencyList: ${{ parameters.rocmDependencies }}
         gpuTarget: ${{ job.target }}
         aggregatePipeline: ${{ parameters.aggregatePipeline }}
@@ -153,7 +153,7 @@ jobs:
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
-        checkoutRef: amd-mainline
+        checkoutRef: amd-staging
         dependencyList: ${{ parameters.rocmDependencies }}
         gpuTarget: ${{ job.target }}
     - task: Bash@3
