@@ -745,6 +745,10 @@ and in-depth descriptions.
 #### Added 
 
 - Support for VA-API and rocDecode tracing.
+- Aggregation of MPI data collected across distributed nodes and ranks. The data is concatenated into a single proto file.
+
+#### Changed
+- Backend refactored to use [ROCprofiler-SDK](https://github.com/ROCm/rocprofiler-sdk) rather than [ROCProfiler](https://github.com/ROCm/rocprofiler) and [ROCTracer](https://github.com/ROCm/ROCTracer).
 
 #### Resolved issues
 
@@ -755,9 +759,9 @@ and in-depth descriptions.
 - Fixed interruption in config file generation.
 
 - Fixed segmentation fault while running rocprof-sys-instrument.
+- Fixed an issue where running `rocprof-sys-causal` or using the `-I all` option with `rocprof-sys-sample` caused the system to become non-responsive.
 
-#### Changed
-- Backend refactored to use [ROCprofiler-SDK](https://github.com/ROCm/rocprofiler-sdk) rather than [ROCProfiler](https://github.com/ROCm/rocprofiler) and [ROCTracer](https://github.com/ROCm/ROCTracer).
+- Fixed an issue where sampling multi-GPU Python workloads caused the system to stop responding.
 
 ### **rocPRIM** (3.4.0)
 
