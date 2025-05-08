@@ -125,6 +125,8 @@ jobs:
       parameters:
         extraBuildFlags: >-
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=$(Agent.BuildDirectory)/rocm/llvm/bin/clang++
+          -DCMAKE_C_COMPILER=$(Agent.BuildDirectory)/rocm/llvm/bin/clang
           -DGPU_TARGETS=${{ job.target }}
           -DAMDGPU_TARGETS=${{ job.target }}
           -DCMAKE_MODULE_PATH=$(Agent.BuildDirectory)/rocm/lib/cmake/hip
@@ -188,6 +190,8 @@ jobs:
       inputs:
         cmakeArgs: >-
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=$(Agent.BuildDirectory)/rocm/llvm/bin/clang++
+          -DCMAKE_C_COMPILER=$(Agent.BuildDirectory)/rocm/llvm/bin/clang
           -DGPU_TARGETS=${{ job.target }}
           -DAMDGPU_TARGETS=${{ job.target }}
           -DCMAKE_MODULE_PATH=$(Agent.BuildDirectory)/rocm/lib/cmake/hip
