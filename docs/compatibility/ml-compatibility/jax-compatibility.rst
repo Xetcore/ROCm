@@ -506,12 +506,14 @@ the listed supported JAX versions.
 
     * - Feature
       - Description
+
     * - Mixed Precision with TF32
       - Mixed precision with TF32 is used for matrix multiplications,
         convolutions, and other linear algebra operations, particularly in
         deep learning workloads like CNNs and transformers.
+
     * - XLA int4 support
       - 4-bit integer (int4) precision in the XLA compiler.
+
     * - MOSAIC (GPU)
       - Mosaic is a library of kernel-building abstractions for JAX's Pallas system
-      - Not Supported
