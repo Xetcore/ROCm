@@ -496,7 +496,7 @@ Modules for JAX extensions.
       - 5.5.0
 
 Unsupported JAX features
---------------------------------------------------------------------------------
+===============================================================================
 
 The following GPU-accelerated JAX features are not supported by ROCm for
 the listed supported JAX versions.
