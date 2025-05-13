@@ -51,6 +51,8 @@ article_pages = [
     {"file": "how-to/deep-learning-rocm", "os": ["linux"]},
 
     {"file": "how-to/rocm-for-ai/index", "os": ["linux"]},
+    {"file": "how-to/rocm-for-ai/install", "os": ["linux"]},
+    {"file": "how-to/rocm-for-ai/system-health-check", "os": ["linux"]},
 
     {"file": "how-to/rocm-for-ai/training/index", "os": ["linux"]},
     {"file": "how-to/rocm-for-ai/training/train-a-model", "os": ["linux"]},
@@ -67,7 +69,6 @@ article_pages = [
     {"file": "how-to/rocm-for-ai/fine-tuning/multi-gpu-fine-tuning-and-inference", "os": ["linux"]},
 
     {"file": "how-to/rocm-for-ai/inference/index", "os": ["linux"]},
-    {"file": "how-to/rocm-for-ai/inference/install", "os": ["linux"]},
     {"file": "how-to/rocm-for-ai/inference/hugging-face-models", "os": ["linux"]},
     {"file": "how-to/rocm-for-ai/inference/llm-inference-frameworks", "os": ["linux"]},
     {"file": "how-to/rocm-for-ai/inference/vllm-benchmark", "os": ["linux"]},

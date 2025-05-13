@@ -30,7 +30,7 @@ ROCm supports multiple :doc:`installation methods <rocm-install-on-linux:install
 
 * :doc:`Using the AMDGPU installer <rocm-install-on-linux:install/amdgpu-install>`
 
-* :ref:`Multi-version installation <rocm-install-on-linux:installation-types>`.
+* :ref:`Multi-version installation <rocm-install-on-linux:installation-types>`
 
 .. grid:: 1
 
@@ -59,4 +59,8 @@ images with the framework pre-installed.
 
 * :doc:`JAX for ROCm <rocm-install-on-linux:install/3rd-party/jax-install>`
 
-The sections that follow in :doc:`Training a model <../training/train-a-model>` are geared for a ROCm with PyTorch installation.
+Next steps
+==========
+
+After installing ROCm and your desired ML libraries -- and before running AI workloads -- conduct system health benchmarks
+to test the optimal performance of your AMD hardware. See :doc:`system-health-check` to get started.

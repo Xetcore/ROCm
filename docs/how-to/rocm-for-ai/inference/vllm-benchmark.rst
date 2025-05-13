@@ -111,35 +111,37 @@ vLLM inference performance testing
    For information on experimental features and known issues related to ROCm optimization efforts on vLLM,
    see the developer's guide at `<https://github.com/ROCm/vllm/blob/main/docs/dev-docker/README.md>`__.
 
-   Getting started
-   ===============
+   System validation
+   =================
 
-   Use the following procedures to reproduce the benchmark results on an
-   MI300X accelerator with the prebuilt vLLM Docker image.
+   Before running AI workloads, it's important to validate that your AMD hardware is configured
+   correctly and performing optimally.
 
-   .. _vllm-benchmark-get-started:
+   To optimize performance, disable automatic NUMA balancing. Otherwise, the GPU
+   might hang until the periodic balancing is finalized. For more information,
+   see the :ref:`system validation steps <rocm-for-ai-system-optimization>`.
 
-   1. Disable NUMA auto-balancing.
+   .. code-block:: shell
 
-      To optimize performance, disable automatic NUMA balancing. Otherwise, the GPU
-      might hang until the periodic balancing is finalized. For more information,
-      see :ref:`AMD Instinct MI300X system optimization <mi300x-disable-numa>`.
+      # disable automatic NUMA balancing
+      sh -c 'echo 0 > /proc/sys/kernel/numa_balancing'
+      # check if NUMA balancing is disabled (returns 0 if disabled)
+      cat /proc/sys/kernel/numa_balancing
+      0
 
-      .. code-block:: shell
+   To test for optimal performance, consult the recommended :ref:`System health benchmarks
+   <rocm-for-ai-system-health-bench>`. This suite of tests will help you verify and fine-tune your
+   system's configuration.
 
-         # disable automatic NUMA balancing
-         sh -c 'echo 0 > /proc/sys/kernel/numa_balancing'
-         # check if NUMA balancing is disabled (returns 0 if disabled)
-         cat /proc/sys/kernel/numa_balancing
-         0
+   Pull the Docker image
+   =====================
 
-   2. Download the `ROCm vLLM Docker image <{{ unified_docker.docker_hub_url }}>`_.
+   Download the `ROCm vLLM Docker image <{{ unified_docker.docker_hub_url }}>`_.
+   Use the following command to pull the Docker image from Docker Hub.
 
-      Use the following command to pull the Docker image from Docker Hub.
+   .. code-block:: shell
 
-      .. code-block:: shell
-
-         docker pull {{ unified_docker.pull_tag }}
+      docker pull {{ unified_docker.pull_tag }}
 
    Benchmarking
    ============
