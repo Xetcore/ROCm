@@ -21,31 +21,68 @@ release cycles for PyTorch on ROCm:
 
 - ROCm PyTorch release:
 
-  - Provides the latest version of ROCm but doesn't immediately support the latest stable PyTorch
-    version.
+  - Provides the latest version of ROCm but might not necessarily support the
+    latest stable PyTorch version.
 
   - Offers :ref:`Docker images <pytorch-docker-compat>` with ROCm and PyTorch
-    pre-installed.
+    preinstalled.
 
   - ROCm PyTorch repository: `<https://github.com/ROCm/pytorch>`_
 
-  - See the :doc:`ROCm PyTorch installation guide <rocm-install-on-linux:install/3rd-party/pytorch-install>` to get started.
+  - See the :doc:`ROCm PyTorch installation guide <rocm-install-on-linux:install/3rd-party/pytorch-install>`
+    to get started.
 
 - Official PyTorch release:
 
-  - Provides the latest stable version of PyTorch but doesn't immediately support the latest ROCm version.
+  - Provides the latest stable version of PyTorch  but might not necessarily
+    support the latest ROCm version.
 
   - Official PyTorch repository: `<https://github.com/pytorch/pytorch>`_
 
   - See the `Nightly and latest stable version installation guide <https://pytorch.org/get-started/locally/>`_
-    or `Previous versions <https://pytorch.org/get-started/previous-versions/>`_ to get started.
+    or `Previous versions <https://pytorch.org/get-started/previous-versions/>`_
+    to get started.
 
-The upstream PyTorch includes an automatic HIPification solution that automatically generates HIP
-source code from the CUDA backend. This approach allows PyTorch to support ROCm without requiring
-manual code modifications.
+PyTorch includes tooling that generates HIP source code from the CUDA backend.
+This approach allows PyTorch to support ROCm without requiring manual code
+modifications. For more information, see :doc:`HIPIFY <hipify:index>`.
 
-Development of ROCm is aligned with the stable release of PyTorch while upstream PyTorch testing uses
-the stable release of ROCm to maintain consistency.
+ROCm development is aligned with the stable release of PyTorch, while upstream
+PyTorch testing uses the stable release of ROCm to maintain consistency.
+
+.. _pytorch-recommendations:
+
+Use cases and recommendations
+================================================================================
+
+* :doc:`Using ROCm for AI: training a model </how-to/rocm-for-ai/training/benchmark-docker/pytorch-training>`
+  guides how to leverage the ROCm platform for training AI models. It covers the
+  steps, tools, and best practices for optimizing training workflows on AMD GPUs
+  using PyTorch features.
+
+* :doc:`Single-GPU fine-tuning and inference </how-to/rocm-for-ai/fine-tuning/single-gpu-fine-tuning-and-inference>`
+  describes and demonstrates how to use the ROCm platform for the fine-tuning
+  and inference of machine learning models, particularly large language models
+  (LLMs), on systems with a single GPU. This topic provides a detailed guide for
+  setting up, optimizing, and executing fine-tuning and inference workflows in
+  such environments.
+
+* :doc:`Multi-GPU fine-tuning and inference optimization </how-to/rocm-for-ai/fine-tuning/multi-gpu-fine-tuning-and-inference>`
+  describes and demonstrates the fine-tuning and inference of machine learning
+  models on systems with multiple GPUs.
+
+* The :doc:`Instinct MI300X workload optimization guide </how-to/rocm-for-ai/inference-optimization/workload>`
+  provides detailed guidance on optimizing workloads for the AMD Instinct MI300X
+  accelerator using ROCm. This guide helps users achieve optimal performance for
+  deep learning and other high-performance computing tasks on the MI300X
+  accelerator.
+
+* The :doc:`Inception with PyTorch documentation </conceptual/ai-pytorch-inception>`
+  describes how PyTorch integrates with ROCm for AI workloads It outlines the
+  use of PyTorch on the ROCm platform and focuses on efficiently leveraging AMD
+  GPU hardware for training and inference tasks in AI applications.
+
+For more use cases and recommendations, see `ROCm PyTorch blog posts <https://rocm.blogs.amd.com/blog/tag/pytorch.html>`_.
 
 .. _pytorch-docker-compat:
 
@@ -56,10 +93,10 @@ Docker image compatibility
 
    <i class="fab fa-docker"></i>
 
-AMD validates and publishes ready-made `PyTorch images <https://hub.docker.com/r/rocm/pytorch>`_
-with ROCm backends on Docker Hub. The following Docker image tags and
-associated inventories are validated for `ROCm 6.4.0 <https://repo.radeon.com/rocm/apt/6.4/>`_.
-Click the |docker-icon| icon to view the image on Docker Hub.
+AMD validates and publishes `PyTorch images <https://hub.docker.com/r/rocm/pytorch>`_
+with ROCm backends on Docker Hub. The following Docker image tags and associated
+inventories were tested on `ROCm 6.4.0 <https://repo.radeon.com/rocm/apt/6.4/>`_.
+Click |docker-icon| to view the image on Docker Hub.
 
 .. list-table:: PyTorch Docker image components
     :header-rows: 1
@@ -212,13 +249,12 @@ Click the |docker-icon| icon to view the image on Docker Hub.
       - `4.0.3 <https://github.com/open-mpi/ompi/tree/v4.0.3>`_
       - `5.3-1.0.5.0 <https://content.mellanox.com/ofed/MLNX_OFED-5.3-1.0.5.0/MLNX_OFED_LINUX-5.3-1.0.5.0-ubuntu20.04-x86_64.tgz>`_
 
-Critical ROCm libraries for PyTorch
+Key ROCm libraries for PyTorch
 ================================================================================
 
-The functionality of PyTorch with ROCm is determined by its underlying library
-dependencies. These critical ROCm components affect the capabilities,
-performance, and feature set available to developers. The versions described
-are available in ROCm :version:`rocm_version`.
+PyTorch functionality on ROCm is determined by its underlying library
+dependencies. These ROCm components affect the capabilities, performance, and
+feature set available to developers.
 
 .. list-table::
     :header-rows: 1
@@ -238,24 +274,23 @@ are available in ROCm :version:`rocm_version`.
       - :version-ref:`hipBLAS rocm_version`
       - Provides GPU-accelerated Basic Linear Algebra Subprograms (BLAS) for
         matrix and vector operations.
-      - Supports operations like matrix multiplication, matrix-vector products,
-        and tensor contractions. Utilized in both dense and batched linear
-        algebra operations.
+      - Supports operations such as matrix multiplication, matrix-vector
+        products, and tensor contractions. Utilized in both dense and batched
+        linear algebra operations.
     * - `hipBLASLt <https://github.com/ROCm/hipBLASLt>`_
       - :version-ref:`hipBLASLt rocm_version`
       - hipBLASLt is an extension of the hipBLAS library, providing additional
         features like epilogues fused into the matrix multiplication kernel or
         use of integer tensor cores.
-      - It accelerates operations like ``torch.matmul``, ``torch.mm``, and the
+      - Accelerates operations such as ``torch.matmul``, ``torch.mm``, and the
         matrix multiplications used in convolutional and linear layers.
     * - `hipCUB <https://github.com/ROCm/hipCUB>`_
       - :version-ref:`hipCUB rocm_version`
       - Provides a C++ template library for parallel algorithms for reduction,
         scan, sort and select.
-      - Supports operations like ``torch.sum``, ``torch.cumsum``, ``torch.sort``
-        and ``torch.topk``. Operations on sparse tensors or tensors with
-        irregular shapes often involve scanning, sorting, and filtering, which
-        hipCUB handles efficiently.
+      - Supports operations such as ``torch.sum``, ``torch.cumsum``,
+        ``torch.sort`` irregular shapes often involve scanning, sorting, and
+        filtering, which hipCUB handles efficiently.
     * - `hipFFT <https://github.com/ROCm/hipFFT>`_
       - :version-ref:`hipFFT rocm_version`
       - Provides GPU-accelerated Fast Fourier Transform (FFT) operations.
@@ -263,8 +298,8 @@ are available in ROCm :version:`rocm_version`.
     * - `hipRAND <https://github.com/ROCm/hipRAND>`_
       - :version-ref:`hipRAND rocm_version`
       - Provides fast random number generation for GPUs.
-      - The ``torch.rand``, ``torch.randn`` and stochastic layers like
-        ``torch.nn.Dropout``.
+      - The ``torch.rand``, ``torch.randn``, and stochastic layers like
+        ``torch.nn.Dropout`` rely on hipRAND.
     * - `hipSOLVER <https://github.com/ROCm/hipSOLVER>`_
       - :version-ref:`hipSOLVER rocm_version`
       - Provides GPU-accelerated solvers for linear systems, eigenvalues, and
@@ -335,7 +370,7 @@ are available in ROCm :version:`rocm_version`.
       - :version-ref:`RPP rocm_version`
       - Speeds up data augmentation, transformation, and other preprocessing steps.
       - Easy to integrate into PyTorch's ``torch.utils.data`` and
-        ``torchvision`` data load workloads.
+        ``torchvision`` data load workloads to speed up data processing.
     * - `rocThrust <https://github.com/ROCm/rocThrust>`_
       - :version-ref:`rocThrust rocm_version`
       - Provides a C++ template library for parallel algorithms like sorting,
@@ -352,11 +387,11 @@ are available in ROCm :version:`rocm_version`.
         involve matrix products, such as ``torch.matmul``, ``torch.bmm``, and
         more.
 
-Supported and unsupported features
+Supported features
 ================================================================================
 
-The following section maps GPU-accelerated PyTorch features to their supported
-ROCm and PyTorch versions.
+This section maps GPU-accelerated PyTorch features to their supported ROCm and
+PyTorch versions.
 
 torch
 --------------------------------------------------------------------------------
@@ -364,23 +399,24 @@ torch
 `torch <https://pytorch.org/docs/stable/index.html>`_ is the central module of
 PyTorch, providing data structures for multi-dimensional tensors and
 implementing mathematical operations on them. It also includes utilities for
-efficient serialization of tensors and arbitrary data types, along with various
-other tools.
+efficient serialization of tensors and arbitrary data types and other tools.
 
 Tensor data types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The data type of a tensor is specified using the ``dtype`` attribute or argument, and PyTorch supports a wide range of data types for different use cases.
+The tensor data type is specified using the ``dtype`` attribute or argument. 
+PyTorch supports many data types for different use cases.
 
-The following table lists `torch.Tensor <https://pytorch.org/docs/stable/tensors.html>`_'s single data types:
+The following table lists `torch.Tensor <https://pytorch.org/docs/stable/tensors.html>`_
+single data types:
 
 .. list-table::
     :header-rows: 1
 
     * - Data type
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - ``torch.float8_e4m3fn``
       - 8-bit floating point, e4m3
       - 2.3
@@ -472,11 +508,11 @@ The following table lists `torch.Tensor <https://pytorch.org/docs/stable/tensors
 
 .. note::
 
-  Unsigned types aside from ``uint8`` are currently only have limited support in
-  eager mode (they primarily exist to assist usage with ``torch.compile``).
+  Unsigned types except ``uint8`` have limited support in eager mode. They
+  primarily exist to assist usage with ``torch.compile``.
 
-  The :doc:`ROCm precision support page <rocm:reference/precision-support>`
-  collected the native HW support of different data types.
+  See :doc:`ROCm precision support <rocm:reference/precision-support>` for the
+  native hardware support of data types.
 
 torch.cuda
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -491,8 +527,8 @@ leveraging ROCm and CUDA as the underlying frameworks.
 
     * - Feature
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - Device management
       - Utilities for managing and interacting with GPUs.
       - 0.4.0
@@ -566,8 +602,8 @@ PyTorch interacts with the ROCm or CUDA environment.
 
     * - Feature
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - ``cufft_plan_cache``
       - Manages caching of GPU FFT plans to optimize repeated FFT computations.
       - 1.7.0
@@ -615,8 +651,8 @@ Supported ``torch`` options include:
 
     * - Option
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - ``allow_tf32``
       - TensorFloat-32 tensor cores may be used in cuDNN convolutions on NVIDIA
         Ampere or newer GPUs.
@@ -631,28 +667,28 @@ Supported ``torch`` options include:
 Automatic mixed precision: torch.amp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PyTorch that automates the process of using both 16-bit (half-precision,
-float16) and 32-bit (single-precision, float32) floating-point types in model
-training and inference.
+PyTorch automates the process of using both 16-bit (half-precision, float16) and
+32-bit (single-precision, float32) floating-point types in model training and
+inference.
 
 .. list-table::
     :header-rows: 1
 
     * - Feature
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - Autocasting
-      - Instances of autocast serve as context managers or decorators that allow
+      - Autocast instances serve as context managers or decorators that allow
         regions of your script to run in mixed precision.
       - 1.9
       - 2.5
     * - Gradient scaling
       - To prevent underflow, “gradient scaling” multiplies the network’s
-        loss(es) by a scale factor and invokes a backward pass on the scaled
-        loss(es). Gradients flowing backward through the network are then
-        scaled by the same factor. In other words, gradient values have a
-        larger magnitude, so they don’t flush to zero.
+        loss by a scale factor and invokes a backward pass on the scaled
+        loss. The same factor then scales gradients flowing backward through
+        the network. In other words, gradient values have a larger magnitude so
+        that they don’t flush to zero.
       - 1.9
       - 2.5
     * - CUDA op-specific behavior
@@ -666,7 +702,7 @@ training and inference.
 Distributed library features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The PyTorch distributed library includes a collective of parallelism modules, a
+PyTorch distributed library includes a collective of parallelism modules, a
 communications layer, and infrastructure for launching and debugging large
 training jobs. See :ref:`rocm-for-ai-pytorch-distributed` for more information.
 
@@ -680,13 +716,13 @@ of computational resources and scalability for large-scale tasks.
 
     * - Feature
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - TensorPipe
       - A point-to-point communication library integrated into
-        PyTorch for distributed training. It is designed to handle tensor data
-        transfers efficiently between different processes or devices, including
-        those on separate machines.
+        PyTorch for distributed training. It handles tensor data transfers
+        efficiently between different processes or devices, including those on
+        separate machines.
       - 1.8
       - 5.4
     * - Gloo
@@ -705,8 +741,8 @@ torch.compiler
 
     * - Feature
       - Description
-      - Since PyTorch
-      - Since ROCm
+      - As of PyTorch
+      - As of ROCm
     * - ``torch.compiler`` (AOT Autograd)
       - Autograd captures not only the user-level code, but also backpropagation,
         which results in capturing the backwards pass “ahead-of-time”. This
@@ -729,8 +765,8 @@ The `torchaudio <https://pytorch.org/audio/stable/index.html>`_ library provides
 utilities for processing audio data in PyTorch, such as audio loading,
 transformations, and feature extraction.
 
-To ensure GPU-acceleration with ``torchaudio.transforms``, you need to move audio
-data (waveform tensor) explicitly to GPU using ``.to('cuda')``.
+To ensure GPU-acceleration with ``torchaudio.transforms``, you need to
+explicitly move audio data (waveform tensor) to GPU using ``.to('cuda')``.
 
 The following ``torchaudio`` features are GPU-accelerated.
 
@@ -739,10 +775,10 @@ The following ``torchaudio`` features are GPU-accelerated.
 
     * - Feature
       - Description
-      - Since torchaudio version
-      - Since ROCm
+      - As of torchaudio version
+      - As of ROCm
     * - ``torchaudio.transforms.Spectrogram``
-      - Generates spectrogram of an input waveform using STFT.
+      - Generate a spectrogram of an input waveform using STFT.
       - 0.6.0
       - 4.5
     * - ``torchaudio.transforms.MelSpectrogram``
@@ -762,7 +798,7 @@ torchvision
 --------------------------------------------------------------------------------
 
 The `torchvision <https://pytorch.org/vision/stable/index.html>`_ library
-provide datasets, model architectures, and common image transformations for
+provides datasets, model architectures, and common image transformations for
 computer vision.
 
 The following ``torchvision`` features are GPU-accelerated.
@@ -772,8 +808,8 @@ The following ``torchvision`` features are GPU-accelerated.
 
     * - Feature
       - Description
-      - Since torchvision version
-      - Since ROCm
+      - As of torchvision version
+      - As of ROCm
     * - ``torchvision.transforms.functional``
       - Provides GPU-compatible transformations for image preprocessing like
         resize, normalize, rotate and crop.
@@ -819,7 +855,7 @@ torchtune
 The `torchtune <https://pytorch.org/torchtune/stable/index.html>`_ library for
 authoring, fine-tuning and experimenting with LLMs.
 
-* Usage: It works out-of-the-box, enabling developers to fine-tune ROCm PyTorch solutions.
+* Usage: Enabling developers to fine-tune ROCm PyTorch solutions.
 
 * Only official release exists.
 
@@ -830,7 +866,8 @@ The `torchserve <https://pytorch.org/serve/>`_ is a PyTorch domain library
 for common sparsity and parallelism primitives needed for large-scale recommender
 systems.
 
-* torchtext does not implement its own kernels. ROCm support is enabled by linking against ROCm libraries.
+* torchtext does not implement its own kernels. ROCm support is enabled by
+  linking against ROCm libraries.
 
 * Only official release exists.
 
@@ -841,14 +878,16 @@ The `torchrec <https://pytorch.org/torchrec/>`_ is a PyTorch domain library for
 common sparsity and parallelism primitives needed for large-scale recommender
 systems.
 
-* torchrec does not implement its own kernels. ROCm support is enabled by linking against ROCm libraries.
+* torchrec does not implement its own kernels. ROCm support is enabled by
+  linking against ROCm libraries.
 
 * Only official release exists.
 
 Unsupported PyTorch features
-----------------------------
+================================================================================
 
-The following are GPU-accelerated PyTorch features not currently supported by ROCm.
+The following GPU-accelerated PyTorch features are not supported by ROCm for
+the listed supported PyTorch versions.
 
 .. list-table::
     :widths: 30, 60, 10
@@ -856,7 +895,7 @@ The following are GPU-accelerated PyTorch features not currently supported by RO
 
     * - Feature
       - Description
-      - Since PyTorch
+      - As of PyTorch
     * - APEX batch norm
       - Use APEX batch norm instead of PyTorch batch norm.
       - 1.6.0
@@ -912,31 +951,3 @@ The following are GPU-accelerated PyTorch features not currently supported by RO
         utilized effectively through custom CUDA extensions or advanced
         workflows.
       - Not a core feature
-
-Use cases and recommendations
-================================================================================
-
-* :doc:`Using ROCm for AI: training a model </how-to/rocm-for-ai/training/train-a-model>` provides
-  guidance on how to leverage the ROCm platform for training AI models. It covers the steps, tools, and best practices
-  for optimizing training workflows on AMD GPUs using PyTorch features.
-
-* :doc:`Single-GPU fine-tuning and inference </how-to/rocm-for-ai/fine-tuning/single-gpu-fine-tuning-and-inference>`
-  describes and demonstrates how to use the ROCm platform for the fine-tuning and inference of
-  machine learning models, particularly large language models (LLMs), on systems with a single AMD
-  Instinct MI300X accelerator. This page provides a detailed guide for setting up, optimizing, and
-  executing fine-tuning and inference workflows in such environments.
-
-* :doc:`Multi-GPU fine-tuning and inference optimization </how-to/rocm-for-ai/fine-tuning/multi-gpu-fine-tuning-and-inference>`
-  describes and demonstrates the fine-tuning and inference of machine learning models on systems
-  with multi MI300X accelerators.
-
-* The :doc:`Instinct MI300X workload optimization guide </how-to/rocm-for-ai/inference-optimization/workload>` provides detailed
-  guidance on optimizing workloads for the AMD Instinct MI300X accelerator using ROCm. This guide is aimed at helping
-  users achieve optimal performance for deep learning and other high-performance computing tasks on the MI300X
-  accelerator.
-
-* The :doc:`Inception with PyTorch documentation </conceptual/ai-pytorch-inception>`
-  describes how PyTorch integrates with ROCm for AI workloads It outlines the use of PyTorch on the ROCm platform and
-  focuses on how to efficiently leverage AMD GPU hardware for training and inference tasks in AI applications.
-
-For more use cases and recommendations, see `ROCm PyTorch blog posts <https://rocm.blogs.amd.com/blog/tag/pytorch.html>`_.
