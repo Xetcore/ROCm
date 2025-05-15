@@ -777,7 +777,7 @@ and in-depth descriptions.
 #### Optimized
 
 * `hipGraphLaunch` parallelism is improved for complex data-parallel graphs.
-* Make the round-robin queue selection in command scheduling. For multi-streams execution, HSA queue from null stream lock is freed and won't occupy the queue ID after the kernel in the stream is finished.
+* Round-robin queue mechanism is updated for command scheduling. For multi-streams execution, HSA queue from null stream lock is freed and won't occupy the queue ID after the kernel in the stream is finished.
 * The HIP runtime doesn't free bitcode object before code generation. It adds a cache, which allows compiled code objects to be reused instead of recompiling. This improves performance on multi-GPU systems.
 * Runtime now uses unified copy approach:
 
@@ -785,6 +785,11 @@ and in-depth descriptions.
     - Kernel copy path is enabled for unpinned `H2D`/`D2H` methods.
     - The default environment variable `GPU_FORCE_BLIT_COPY_SIZE` is set to `16`, which limits the kernel copy to sizes less than 16 KB, while copies larger than that would be handled by `SDMA` engine.
     - Blit code is refactored, and ASAN instrumentation is cleaned up.
+
+* HIP runtime uses signals without interrupts:
+
+    - In active wait mode, uses signals without interrupts by default.
+    - Only when a callback is required, switches to the interrupts.
 
 #### Resolved issues
 
@@ -796,13 +801,15 @@ and in-depth descriptions.
 
 The following lists the backward incompatible changes planned for upcoming major ROCm releases.
 
-* Signature changes in APIs to correspond with NVIDIA CUDA APIs,
+* Signature changes in APIs to match corresponding CUDA APIs,
 
     - `hiprtcCreateProgram`
     - `hiprtcCompileProgram`
     - `hipCtxGetApiVersion`
 
 * Behavior of `hipPointerGetAttributes` is changed to match corresponding CUDA API in version 11 and later releases.
+* Behavior of `hipFree` is changed to match corresponding CUDA API `cudaFree`.
+* HIP vector constructor changes for `hipComplex`.
 * Return error/value code updates in the following hip APIs to match the corresponding CUDA APIs,
 
     - `hipModuleLaunchKernel`
