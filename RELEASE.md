@@ -429,11 +429,11 @@ See the full [AMD SMI changelog](https://github.com/ROCm/amdsmi/blob/6.3.x/CHANG
 
 #### Added
 
-* An activeQueues set that tracks only the queues that have a command submitted to them, which allows fast iteration in ``waitActiveStreams``.
+* An activeQueues set that tracks only the queues that have a command submitted to them, which allows fast iteration in `waitActiveStreams`.
 
-#### Resolved issues
+#### Optimized
 
-* A deadlock in a specific customer application by preventing hipLaunchKernel latency degradation with number of idle streams.
+* Mechanism of preventing `hipLaunchKernel` latency degradation with number of idle streams is implemented for performance improvement.
 
 ### **HIPIFY** (18.0.0)
 
