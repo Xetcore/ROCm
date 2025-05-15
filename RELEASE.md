@@ -672,6 +672,11 @@ See the full [AMD SMI changelog](https://github.com/ROCm/amdsmi/blob/6.3.x/CHANG
 * Optimized multi-threaded dispatches to improve performance.
 * Limited the software batch size to control the number of command submissions for runtime to handle efficiently.
 * Optimizes HSA callback performance when a large number of events are recorded by multiple threads and submitted to multiple GPUs.
+* HIP graph execution performance improvement.
+    - Added the optimized multistream path in graph execution. It uses a fixed number of async streams in the execution
+    - Optimized the launch latency, where commands creation and execution is done at the same time
+    - Optimized the scheduling to use less barriers and waiting signals if the same queue  can be detected
+    - The new path is controlled by a new environment variable, with the options either to use the original path, or to force the number of asynchronous queues for execution.
 
 #### Resolved issues
 
