@@ -809,7 +809,7 @@ The following lists the backward incompatible changes planned for upcoming major
 
 * Behavior of `hipPointerGetAttributes` is changed to match corresponding CUDA API in version 11 and later releases.
 * Behavior of `hipFree` is changed to match corresponding CUDA API `cudaFree`.
-* HIP vector constructor changes fir `hipComplex`.
+* HIP vector constructor changes for `hipComplex`.
 * Return error/value code updates in the following hip APIs to match the corresponding CUDA APIs,
 
     - `hipModuleLaunchKernel`
