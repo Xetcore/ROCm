@@ -3,10 +3,22 @@
 # also display installed components and packages
 steps:
 - task: Bash@3
-  displayName: List apt packages
+  displayName: List installed packages (apt, dnf, or yum)
   inputs:
     targetType: inline
-    script: apt list --installed
+    script: |
+      if command -v apt >/dev/null 2>&1; then
+        echo "Listing installed packages with apt:"
+        apt list --installed
+      elif command -v dnf >/dev/null 2>&1; then
+        echo "Listing installed packages with dnf:"
+        dnf list installed
+      elif command -v yum >/dev/null 2>&1; then
+        echo "Listing installed packages with yum:"
+        yum list installed
+      else
+        echo "No supported package manager found (apt, dnf, yum)."
+      fi
 - task: Bash@3
   displayName: Print Python version
   inputs:
