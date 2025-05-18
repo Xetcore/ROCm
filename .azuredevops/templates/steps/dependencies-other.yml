@@ -50,6 +50,11 @@ steps:
         script: sudo DEBIAN_FRONTEND=noninteractive apt-get --yes --fix-missing install ${{ join(' ', parameters.aptPackages) }}
 - ${{ if gt(length(parameters.dnfPackages), 0) }}:
   - task: Bash@3
+    displayName: 'sudo dnf config-manager --set-enabled powertools'
+    inputs:
+      targetType: inline
+      script: sudo dnf config-manager --set-enabled powertools
+  - task: Bash@3
     displayName: 'sudo dnf install epel-release'
     inputs:
       targetType: inline
