@@ -60,11 +60,6 @@ steps:
       targetType: inline
       script: sudo dnf -y install epel-release
   - task: Bash@3
-    displayName: 'sudo dnf update'
-    inputs:
-      targetType: inline
-      script: sudo dnf -y update
-  - task: Bash@3
     displayName: 'sudo dnf install gcc-toolset-14'
     inputs:
       targetType: inline
