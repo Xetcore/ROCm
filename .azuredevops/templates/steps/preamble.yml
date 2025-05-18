@@ -28,7 +28,7 @@ steps:
   displayName: List Python packages
   inputs:
     targetType: inline
-    script: pip list -v
+    script: python3 -m pip list -v
 # The "Azure Pipelines" agents install CMake in multiple ways, including a standalone install into /usr/local/bin:
 # https://github.com/actions/runner-images/blob/6d939a3ab352a54a021dd67b071577287b6f14a5/images/ubuntu/scripts/build/install-cmake.sh#L27
 # This standalone CMake does not have a fixed version, and is not the same version as the one installed by the package manager
