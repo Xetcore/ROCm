@@ -29,13 +29,13 @@ parameters:
     buildJobs:
       - ubuntu2204:
         os: ubuntu2204
-        package-manager: apt
+        package_manager: apt
       - almalinux8:
         os: almalinux8
-        package-manager: dnf
+        package_manager: dnf
       - rhel8:
         os: rhel810
-        package-manager: dnf
+        package_manager: dnf
 
 jobs:
 - ${{ each job in parameters.jobMatrix.buildJobs }}:
