@@ -50,15 +50,13 @@ steps:
         script: sudo DEBIAN_FRONTEND=noninteractive apt-get --yes --fix-missing install ${{ join(' ', parameters.aptPackages) }}
 - ${{ if gt(length(parameters.dnfPackages), 0) }}:
   - task: Bash@3
-    displayName: 'sudo dnf config-manager --set-enabled powertools'
+    displayName: 'dnf powertools and repositories'
     inputs:
       targetType: inline
-      script: sudo dnf config-manager --set-enabled powertools
-  - task: Bash@3
-    displayName: 'sudo dnf install epel-release'
-    inputs:
-      targetType: inline
-      script: sudo dnf -y install epel-release
+      script: |
+        sudo dnf config-manager --set-enabled powertools
+        sudo dnf -y install epel-release
+        sudo dnf -y install https://repo.ius.io/ius-release-el8.rpm
   - task: Bash@3
     displayName: 'sudo dnf install gcc-toolset-14'
     inputs:
@@ -80,20 +78,19 @@ steps:
         echo "##vso[task.setvariable variable=CC]/opt/rh/gcc-toolset-14/root/usr/bin/gcc"
         echo "##vso[task.setvariable variable=CXX]/opt/rh/gcc-toolset-14/root/usr/bin/g++"
   - task: Bash@3
+    displayName: 'Update to python 3.10'
+    inputs:
+      targetType: inline
+      script: |
+        sudo dnf -y module disable python3
+        sudo dnf -y install python310 python310-pip
+        sudo alternatives --set python /usr/bin/python3.10
+        python3 --version
+  - task: Bash@3
     displayName: 'sudo dnf install packages'
     inputs:
       targetType: inline
       script: sudo dnf -y install ${{ join(' ', parameters.dnfPackages) }}
-  - task: Bash@3
-    displayName: 'Update python on AlmaLinux 8'
-    inputs:
-      targetType: inline
-      script: |
-        sudo dnf -y module reset python310
-        sudo dnf -y module enable python310:3.10
-        sudo dnf -y install python310
-        sudo alternatives --set python /usr/bin/python3.10
-        python3 --version
 - ${{ if gt(length(parameters.pipModules), 0) }}:
   - task: Bash@3
     displayName: 'pip install  ...'
