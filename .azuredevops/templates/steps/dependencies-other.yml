@@ -6,9 +6,6 @@ parameters:
 - name: dnfPackages
   type: object
   default: []
-- name: os
-  type: string
-  default: 'ubuntu2204'
 - name: pipModules
   type: object
   default: []
@@ -52,37 +49,36 @@ steps:
         targetType: inline
         script: sudo DEBIAN_FRONTEND=noninteractive apt-get --yes --fix-missing install ${{ join(' ', parameters.aptPackages) }}
 - ${{ if gt(length(parameters.dnfPackages), 0) }}:
-  - ${{ if eq(parameters.os, 'almalinux8') }}:
-    - task: Bash@3
-      displayName: 'sudo dnf config-manager --set-enabled powertools'
-      inputs:
-        targetType: inline
-        script: sudo dnf config-manager --set-enabled powertools
-    - task: Bash@3
-      displayName: 'sudo dnf install epel-release'
-      inputs:
-        targetType: inline
-        script: sudo dnf -y install epel-release
-    - task: Bash@3
-      displayName: 'sudo dnf install gcc-toolset-14'
-      inputs:
-        targetType: inline
-        script: sudo dnf -y install gcc-toolset-14
-    - task: Bash@3
-      displayName: 'Enable GCC 14 and check version'
-      inputs:
-        targetType: inline
-        script: |
-          scl enable gcc-toolset-14 -- gcc --version
-          source /opt/rh/gcc-toolset-14/enable
-          gcc --version
-    - task: Bash@3
-      displayName: 'Set CC/CXX env vars'
-      inputs:
-        targetType: inline
-        script: |
-          echo "##vso[task.setvariable variable=CC]/opt/rh/gcc-toolset-14/root/usr/bin/gcc"
-          echo "##vso[task.setvariable variable=CXX]/opt/rh/gcc-toolset-14/root/usr/bin/g++"
+  - task: Bash@3
+    displayName: 'sudo dnf config-manager --set-enabled powertools'
+    inputs:
+      targetType: inline
+      script: sudo dnf config-manager --set-enabled powertools
+  - task: Bash@3
+    displayName: 'sudo dnf install epel-release'
+    inputs:
+      targetType: inline
+      script: sudo dnf -y install epel-release
+  - task: Bash@3
+    displayName: 'sudo dnf install gcc-toolset-14'
+    inputs:
+      targetType: inline
+      script: sudo dnf -y install gcc-toolset-14
+  - task: Bash@3
+    displayName: 'Enable GCC 14 and check version'
+    inputs:
+      targetType: inline
+      script: |
+        scl enable gcc-toolset-14 -- gcc --version
+        source /opt/rh/gcc-toolset-14/enable
+        gcc --version
+  - task: Bash@3
+    displayName: 'Set CC/CXX env vars'
+    inputs:
+      targetType: inline
+      script: |
+        echo "##vso[task.setvariable variable=CC]/opt/rh/gcc-toolset-14/root/usr/bin/gcc"
+        echo "##vso[task.setvariable variable=CXX]/opt/rh/gcc-toolset-14/root/usr/bin/g++"
   - task: Bash@3
     displayName: 'sudo dnf install packages'
     inputs:
