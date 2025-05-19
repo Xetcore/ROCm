@@ -84,8 +84,8 @@ steps:
         sudo dnf -y module disable python36
         sudo dnf -y module enable python39
         sudo dnf -y install python39 python39-pip
-        sudo alternatives --install /usr/bin/python python /usr/bin/python3.9 1
-        sudo alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+        sudo alternatives --set python /usr/bin/python3.9
+        sudo alternatives --set python3 /usr/bin/python3.9
         python3 --version
   - task: Bash@3
     displayName: 'sudo dnf install packages'
