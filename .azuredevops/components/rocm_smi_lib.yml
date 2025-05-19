@@ -18,6 +18,15 @@ parameters:
     - ninja-build
     - pkg-config
     - python3-pip
+- name: dnfPackages
+  type: object
+  default:
+    - cmake
+    - git
+    - libdrm-devel
+    - ninja-build
+    - python3-pip
+    - pkgconf-pkg-config
 
 - name: jobMatrix
   type: object
