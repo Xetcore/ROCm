@@ -87,6 +87,7 @@ steps:
         sudo alternatives --set python /usr/bin/python3.9
         sudo alternatives --set python3 /usr/bin/python3.9
         python3 --version
+        python3 -m pip install pygments
   - task: Bash@3
     displayName: 'sudo dnf install packages'
     inputs:
