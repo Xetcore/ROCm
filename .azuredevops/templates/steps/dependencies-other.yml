@@ -84,6 +84,16 @@ steps:
     inputs:
       targetType: inline
       script: sudo dnf -y install ${{ join(' ', parameters.dnfPackages) }}
+  - task: Bash@3
+    displayName: 'Update python on AlmaLinux 8'
+    inputs:
+      targetType: inline
+      script: |
+        sudo dnf -y module reset python311
+        sudo dnf -y module enable python311:3.11
+        sudo dnf -y install python311
+        sudo alternatives --set python /usr/bin/python3.11
+        python --version
 - ${{ if gt(length(parameters.pipModules), 0) }}:
   - task: Bash@3
     displayName: 'pip install  ...'
