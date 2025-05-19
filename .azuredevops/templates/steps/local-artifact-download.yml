@@ -37,7 +37,7 @@ steps:
         project: ROCm-CI
         definition: ${{ parameters.definitionId }}
         buildId: ${{ parameters.buildId }}
-      itemPattern: '**/*${{ parameters.preTargetFilter }}*${{ parameters.gpuTarget }}*${{ parameters.postTargetFilter }}*'
+      itemPattern: '**/*${{ parameters.preTargetFilter }}*${{ parameters.os }}_${{ parameters.gpuTarget }}*${{ parameters.postTargetFilter }}*'
       targetPath: $(Pipeline.Workspace)/d
   - task: ExtractFiles@1
     displayName: 'Extract Pipeline Build'

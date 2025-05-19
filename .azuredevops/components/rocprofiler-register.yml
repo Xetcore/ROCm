@@ -34,9 +34,6 @@ parameters:
       - almalinux8:
         os: almalinux8
         package_manager: dnf
-#      - rhel8:
-#        os: rhel810
-#        package_manager: dnf
 
 jobs:
 - ${{ each job in parameters.jobMatrix.buildJobs }}:
@@ -46,8 +43,6 @@ jobs:
         vmImage: 'ubuntu-22.04'
       ${{ if eq(job.os, 'almalinux8') }}:
         name: 'rocm-ci_low_build_pool_alma8'
-      ${{ if eq(job.os, 'rhel810') }}:
-        name: 'rocm-ci_low_build_pool_rhel8'
     variables:
     - group: common
     - template: /.azuredevops/variables-global.yml
