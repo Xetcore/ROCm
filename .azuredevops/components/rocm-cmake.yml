@@ -25,7 +25,6 @@ parameters:
     - git
     - jq
     - ninja-build
-    - python3-sphinx
 - name: pipModules
   type: object
   default:
