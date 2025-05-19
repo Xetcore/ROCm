@@ -70,6 +70,7 @@ steps:
       targetType: inline
       script: |
         scl enable gcc-toolset-14 -- gcc --version
+        source /opt/rh/gcc-toolset-14/enable
         gcc --version
   - task: Bash@3
     displayName: 'Set CC/CXX env vars'
