@@ -89,10 +89,10 @@ steps:
     inputs:
       targetType: inline
       script: |
-        sudo dnf -y module reset python39
-        sudo dnf -y module enable python39:3.9
-        sudo dnf -y install python39
-        sudo alternatives --set python /usr/bin/python3.9
+        sudo dnf -y module reset python310
+        sudo dnf -y module enable python310:3.10
+        sudo dnf -y install python310
+        sudo alternatives --set python /usr/bin/python3.10
         python3 --version
 - ${{ if gt(length(parameters.pipModules), 0) }}:
   - task: Bash@3
