@@ -42,7 +42,6 @@ ROCm documentation is organized into the following categories:
 * [Use ROCm for HPC](./how-to/rocm-for-hpc/index.rst)
 * [System optimization](./how-to/system-optimization/index.rst)
 * [AMD Instinct MI300X performance validation and tuning](./how-to/tuning-guides/mi300x/index.rst)
-* [System debugging](./how-to/system-debugging.md)
 * [Use advanced compiler features](./conceptual/compiler-topics.md)
 * [Set the number of CUs](./how-to/setting-cus)
 * [Troubleshoot BAR access limitation](./how-to/Bar-Memory.rst)

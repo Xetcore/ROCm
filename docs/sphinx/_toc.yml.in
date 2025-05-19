@@ -109,7 +109,6 @@ subtrees:
     title: System optimization
   - file: how-to/gpu-performance/mi300x.rst
     title: AMD Instinct MI300X performance guides
-  - file: how-to/system-debugging.md
   - file: conceptual/compiler-topics.md
     title: Use advanced compiler features
     subtrees:
@@ -123,7 +122,7 @@ subtrees:
   - file: how-to/setting-cus
     title: Set the number of CUs
   - file: how-to/Bar-Memory.rst
-    title: Troubleshoot BAR access limitation  
+    title: Troubleshoot BAR access limitation
   - url: https://github.com/amd/rocm-examples
     title: ROCm examples
 
