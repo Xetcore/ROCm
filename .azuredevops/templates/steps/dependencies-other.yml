@@ -89,11 +89,11 @@ steps:
     inputs:
       targetType: inline
       script: |
-        sudo dnf -y module reset python311
-        sudo dnf -y module enable python311:3.11
-        sudo dnf -y install python311
-        sudo alternatives --set python /usr/bin/python3.11
-        python --version
+        sudo dnf -y module reset python39
+        sudo dnf -y module enable python39:3.9
+        sudo dnf -y install python39
+        sudo alternatives --set python /usr/bin/python3.9
+        python3 --version
 - ${{ if gt(length(parameters.pipModules), 0) }}:
   - task: Bash@3
     displayName: 'pip install  ...'
