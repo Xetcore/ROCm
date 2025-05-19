@@ -2,6 +2,9 @@
 # It can be overridden to download any artifact from any pipeline, given the appropriate build/pipeline IDs
 
 parameters:
+  - name: os
+    type: string
+    default: 'ubuntu2204'
   - name: gpuTarget
     type: string
     default: ''

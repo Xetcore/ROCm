@@ -40,12 +40,8 @@ parameters:
         package_manager: dnf
     testJobs:
       - ubuntu2204_gfx942:
-        os: ubuntu2204
-        package_manager: apt
         target: gfx942
       - ubuntu2204_gfx90a:
-        os: almalinux8
-        package_manager: dnf
         target: gfx90a
 
 jobs:
@@ -89,8 +85,8 @@ jobs:
     #     aptPackages: ${{ parameters.aptPackages }}
 
 - ${{ each job in parameters.jobMatrix.testJobs }}:
-  - job: amdsmi_test_${{ job.os }}_${{ job.target }}
-    dependsOn: amdsmi_build
+  - job: amdsmi_test_${{ job.target }}
+    dependsOn: amdsmi_build_ubuntu2204
     condition:
       and(succeeded(),
         eq(variables['ENABLE_${{ upper(job.target) }}_TESTS'], 'true'),
@@ -104,18 +100,11 @@ jobs:
     workspace:
       clean: all
     steps:
-    - ${{ if eq(job.package_manager, 'dnf') }}:
-      - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
-        parameters:
-          dnfPackages: ${{ parameters.dnfPackages }}
-    - ${{ if eq(job.package_manager, 'apt') }}:
-      - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
-        parameters:
-          aptPackages: ${{ parameters.aptPackages }}
+    - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
+      parameters:
+        aptPackages: ${{ parameters.aptPackages }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/preamble.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/local-artifact-download.yml
-      parameters:
-        os: ${{ job.os }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/gpu-diagnostics.yml
       parameters:
         runRocminfo: false
