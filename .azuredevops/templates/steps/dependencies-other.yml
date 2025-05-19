@@ -69,8 +69,15 @@ steps:
     inputs:
       targetType: inline
       script: |
-        source /opt/rh/gcc-toolset-14/enable
+        scl enable gcc-toolset-14 -- gcc --version
         gcc --version
+  - task: Bash@3
+    displayName: 'Set CC/CXX env vars'
+    inputs:
+      targetType: inline
+      script: |
+        echo "##vso[task.setvariable variable=CC]/opt/rh/gcc-toolset-14/root/usr/bin/gcc"
+        echo "##vso[task.setvariable variable=CXX]/opt/rh/gcc-toolset-14/root/usr/bin/g++"
   - task: Bash@3
     displayName: 'sudo dnf install packages'
     inputs:
