@@ -56,7 +56,6 @@ steps:
       script: |
         sudo dnf config-manager --set-enabled powertools
         sudo dnf -y install epel-release
-        sudo dnf -y install https://repo.ius.io/ius-release-el8.rpm
   - task: Bash@3
     displayName: 'sudo dnf install gcc-toolset-14'
     inputs:
@@ -78,13 +77,13 @@ steps:
         echo "##vso[task.setvariable variable=CC]/opt/rh/gcc-toolset-14/root/usr/bin/gcc"
         echo "##vso[task.setvariable variable=CXX]/opt/rh/gcc-toolset-14/root/usr/bin/g++"
   - task: Bash@3
-    displayName: 'Update to python 3.10'
+    displayName: 'Update to python 3.12'
     inputs:
       targetType: inline
       script: |
         sudo dnf -y module disable python3
-        sudo dnf -y install python310 python310-pip
-        sudo alternatives --set python /usr/bin/python3.10
+        sudo dnf -y install python312 python312-pip
+        sudo alternatives --set python /usr/bin/python3.12
         python3 --version
   - task: Bash@3
     displayName: 'sudo dnf install packages'
