@@ -82,10 +82,13 @@ steps:
       targetType: inline
       script: |
         sudo dnf -y module disable python36
-        sudo dnf -y module enable python39
-        sudo dnf -y install python39 python39-pip
-        sudo alternatives --set python /usr/bin/python3.9
-        sudo alternatives --set python3 /usr/bin/python3.9
+        # sudo dnf -y module enable python39
+        # sudo dnf -y install python39 python39-pip
+        # sudo alternatives --set python /usr/bin/python3.9
+        # sudo alternatives --set python3 /usr/bin/python3.9
+        sudo dnf -y install python3.11 python3.11-pip
+        sudo alternatives --set python /usr/bin/python3.11
+        sudo alternatives --set python3 /usr/bin/python3.11
         python3 --version
         python3 -m pip install --upgrade pip setuptools wheel
         python3 -m pip install sphinx
