@@ -34,9 +34,9 @@ parameters:
       - almalinux8:
         os: almalinux8
         package_manager: dnf
-#      - rhel8:
-#        os: rhel810
-#        package_manager: dnf
+      - rhel8:
+        os: rhel810
+        package_manager: dnf
 
 jobs:
 - ${{ each job in parameters.jobMatrix.buildJobs }}:
@@ -62,6 +62,7 @@ jobs:
       - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
         parameters:
           aptPackages: ${{ parameters.aptPackages }}
+          os: ${{ job.os }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/preamble.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/checkout.yml
       parameters:
