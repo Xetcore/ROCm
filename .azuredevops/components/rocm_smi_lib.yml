@@ -58,14 +58,14 @@ jobs:
     workspace:
       clean: all
     steps:
-      - ${{ if eq(job.package_manager, 'dnf') }}:
-        - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
-          parameters:
-            dnfPackages: ${{ parameters.dnfPackages }}
-      - ${{ if eq(job.package_manager, 'apt') }}:
-        - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
-          parameters:
-            aptPackages: ${{ parameters.aptPackages }}
+    - ${{ if eq(job.package_manager, 'dnf') }}:
+      - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
+        parameters:
+          dnfPackages: ${{ parameters.dnfPackages }}
+    - ${{ if eq(job.package_manager, 'apt') }}:
+      - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-other.yml
+        parameters:
+          aptPackages: ${{ parameters.aptPackages }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/preamble.yml
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/checkout.yml
       parameters:
