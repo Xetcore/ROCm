@@ -88,9 +88,9 @@ export ROCM_VERSION=1
 # Option 1: Start a docker container
 # Pulling required base docker images:
 # Ubuntu22.04 built from ROCm/tools/rocm-build/docker/ubuntu22/Dockerfile
-docker pull rocm/rocm-build-ubuntu-22.04:6.4.1
+docker pull rocm/rocm-build-ubuntu-22.04:6.4
 # Ubuntu24.04 built from ROCm/tools/rocm-build/docker/ubuntu24/Dockerfile
-docker pull rocm/rocm-build-ubuntu-24.04:6.4.1
+docker pull rocm/rocm-build-ubuntu-24.04:6.4
 
 # Start docker container and mount the source code folder:
 docker run -ti \
