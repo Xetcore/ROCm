@@ -255,8 +255,8 @@ print_output_directory() {
 # Common variables
 target="build"
 
-kfdtest_target="yes"
-rocrtst_target="yes"
+kfdtest_target="no"
+rocrtst_target="no"
 rocr_target="ON"
 
 package_root="$(getPackageRoot)"
