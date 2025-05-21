@@ -81,6 +81,7 @@ additional licenses. Please review individual repositories for more information.
 | [rocRAND](https://github.com/ROCm/rocRAND/) | [MIT](https://github.com/ROCm/rocRAND/blob/develop/LICENSE.txt) |
 | [ROCr Debug Agent](https://github.com/ROCm/rocr_debug_agent/) | [The University of Illinois/NCSA](https://github.com/ROCm/rocr_debug_agent/blob/amd-staging/LICENSE.txt) |
 | [ROCR-Runtime](https://github.com/ROCm/ROCR-Runtime/) | [The University of Illinois/NCSA](https://github.com/ROCm/ROCR-Runtime/blob/amd-staging/LICENSE.txt) |
+| [rocSHMEM](https://github.com/ROCm/rocSHMEM/) | [MIT](https://github.com/ROCm/rocSHMEM/blob/develop/LICENSE.md) |
 | [rocSOLVER](https://github.com/ROCm/rocSOLVER/) | [BSD-2-Clause](https://github.com/ROCm/rocSOLVER/blob/develop/LICENSE.md) |
 | [rocSPARSE](https://github.com/ROCm/rocSPARSE/) | [MIT](https://github.com/ROCm/rocSPARSE/blob/develop/LICENSE.md) |
 | [rocThrust](https://github.com/ROCm/rocThrust/) | [Apache 2.0](https://github.com/ROCm/rocThrust/blob/develop/LICENSE) |

@@ -282,6 +282,24 @@ For more information about ROCm hardware compatibility, see the ROCm `Compatibil
           - GFXIP Major version
           - GFXIP Minor version
         *
+          - Radeon AI PRO R7900
+          - RDNA4
+          - gfx1201
+          - 16
+          - 64
+          - 32 or 64
+          - 128
+          - 64
+          - 8
+          - N/A
+          - 32
+          - 16
+          - 32
+          - 768
+          - 32
+          - 12
+          - 0
+        *
           - Radeon PRO V710
           - RDNA3
           - gfx1101
@@ -504,6 +522,42 @@ For more information about ROCm hardware compatibility, see the ROCm `Compatibil
           - SGPR File (KiB)
           - GFXIP Major version
           - GFXIP Minor version
+        *
+          - Radeon RX 9070 XT
+          - RDNA4
+          - gfx1200
+          - 16
+          - 64
+          - 32 or 64
+          - 128
+          - 64
+          - 8
+          - N/A
+          - 32
+          - 16
+          - 32
+          - 768
+          - 32
+          - 12
+          - 0
+        *
+          - Radeon RX 9060 XT
+          - RDNA4
+          - gfx1200
+          - 16
+          - 32
+          - 32 or 64
+          - 128
+          - 32
+          - 4
+          - N/A
+          - 32
+          - 16
+          - 32
+          - 768
+          - 32
+          - 12
+          - 0
         *
           - Radeon RX 7900 XTX
           - RDNA3

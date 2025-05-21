@@ -12,14 +12,14 @@ subtrees:
   - file: compatibility/compatibility-matrix.rst
     title: Compatibility matrix
     entries:
-    - url: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/reference/system-requirements.html
+    - url: https://rocm.docs.amd.com/projects/install-on-linux-internal/en/latest/reference/system-requirements.html
       title: Linux system requirements
     - url: https://rocm.docs.amd.com/projects/install-on-windows/en/${branch}/reference/system-requirements.html
       title: Windows system requirements
 
 - caption: Install
   entries:
-  - url: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/
+  - url: https://rocm.docs.amd.com/projects/install-on-linux-internal/en/latest/
     title: ROCm on Linux
   - url: https://rocm.docs.amd.com/projects/install-on-windows/en/${branch}/
     title: HIP SDK on Windows
@@ -36,6 +36,10 @@ subtrees:
     title: Use ROCm for AI
     subtrees:
     - entries:
+      - file: how-to/rocm-for-ai/install.rst
+        title: Installation
+      - file: how-to/rocm-for-ai/system-health-check.rst
+        title: System health benchmarks
       - file: how-to/rocm-for-ai/training/index.rst
         title: Training
         subtrees:
@@ -46,6 +50,8 @@ subtrees:
             title: Train a model with PyTorch
           - file: how-to/rocm-for-ai/training/benchmark-docker/jax-maxtext
             title: Train a model with JAX MaxText
+          - file: how-to/rocm-for-ai/training/benchmark-docker/mpt-llm-foundry
+            title: Train a model with LLM Foundry
           - file: how-to/rocm-for-ai/training/scale-model-training.rst
             title: Scale model training
 
@@ -68,14 +74,14 @@ subtrees:
         title: Inference
         subtrees:
         - entries:
-          - file: how-to/rocm-for-ai/inference/install.rst
-            title: Installation
           - file: how-to/rocm-for-ai/inference/hugging-face-models.rst
             title: Run models from Hugging Face
           - file: how-to/rocm-for-ai/inference/llm-inference-frameworks.rst
             title: LLM inference frameworks
           - file: how-to/rocm-for-ai/inference/vllm-benchmark.rst
-            title: Performance testing
+            title: vLLM inference performance testing
+          - file: how-to/rocm-for-ai/inference/pytorch-inference-benchmark.rst
+            title: PyTorch inference performance testing
           - file: how-to/rocm-for-ai/inference/deploy-your-model.rst
             title: Deploy your model
 

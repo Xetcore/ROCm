@@ -105,6 +105,7 @@ jobs:
           -DLAPACKE=OFF
           -GNinja
         cmakeBuildDir: '$(Build.SourcesDirectory)/lapack/build'
+        cmakeSourceDir: '$(Build.SourcesDirectory)/lapack'
         installDir: '$(Pipeline.Workspace)/deps-install'
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/build-cmake.yml
       parameters:
@@ -143,8 +144,6 @@ jobs:
     variables:
     - group: common
     - template: /.azuredevops/variables-global.yml
-    - name: AMD_COMGR_CACHE
-      value: 0
     pool: ${{ job.target }}_test_pool
     workspace:
       clean: all
