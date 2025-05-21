@@ -253,14 +253,19 @@ Click {fab}`github` to go to the component's source code on GitHub.
         </tbody>
         <tbody class="rocm-components-libs rocm-components-communication tbody-reverse-zebra">
             <tr>
-                <th rowspan="1"></th>
-                <th rowspan="1">Communication</th>
+                <th rowspan="2"></th>
+                <th rowspan="2">Communication</th>
                 <td><a href="https://rocm.docs.amd.com/projects/rccl/en/docs-6.4.0/index.html">RCCL</a></td>
                 <td>2.21.5&nbsp;&Rightarrow;&nbsp;<a href="#rccl-2-22-3">2.22.3</a></td>
                 <td><a href="https://github.com/ROCm/rccl"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
+            <tr>
+            <td><a href="https://github.com/ROCm/rocSHMEM">rocSHMEM</a></td>
+                <td>2.0.0</td>
+                <td><a href="https://github.com/ROCm/rocSHMEM"><i class="fab fa-github fa-lg"></i></a></td>
+            </tr>
         </tbody>
-        <tbody class="rocm-components-libs rocm-components-math">
+        <tbody class="rocm-components-libs rocm-components-math tbody-reverse-zebra">
             <tr>
                 <th rowspan="16"></th>
                 <th rowspan="16">Math</th>
@@ -344,7 +349,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                 <td><a href="https://github.com/ROCm/Tensile"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-libs rocm-components-primitives">
+        <tbody class="rocm-components-libs rocm-components-primitives tbody-reverse-zebra">
             <tr>
                 <th rowspan="4"></th>
                 <th rowspan="4">Primitives</th>
@@ -368,7 +373,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                 <td><a href="https://github.com/ROCm/rocThrust"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-tools rocm-components-system">
+        <tbody class="rocm-components-tools rocm-components-system tbody-reverse-zebra">
             <tr>
                 <th rowspan="7">Tools</th>
                 <th rowspan="7">System management</th>
@@ -397,7 +402,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                 <td><a href="https://github.com/ROCm/ROCmValidationSuite"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-tools rocm-components-perf tbody-reverse-zebra">
+        <tbody class="rocm-components-tools rocm-components-perf">
             <tr>
                 <th rowspan="6"></th>
                 <th rowspan="6">Performance</th>
@@ -438,7 +443,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                             class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-tools rocm-components-dev tbody-reverse-zebra">
+        <tbody class="rocm-components-tools rocm-components-dev">
             <tr>
                 <th rowspan="5"></th>
                 <th rowspan="5">Development</th>
@@ -474,7 +479,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                             class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-compilers">
+        <tbody class="rocm-components-compilers tbody-reverse-zebra">
             <tr>
                 <th rowspan="2" colspan="2">Compilers</th>
                 <td><a href="https://rocm.docs.amd.com/projects/HIPCC/en/docs-6.4.0/index.html">HIPCC</a></td>
@@ -489,7 +494,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                             class="fab fa-github fa-lg"></i></a></td>
             </tr>
         </tbody>
-        <tbody class="rocm-components-runtimes">
+        <tbody class="rocm-components-runtimes tbody-reverse-zebra">
             <tr>
                 <th rowspan="2" colspan="2">Runtimes</th>
                 <td><a href="https://rocm.docs.amd.com/projects/HIP/en/docs-6.4.0/index.html">HIP</a></td>
@@ -1247,6 +1252,11 @@ See the full [ROCm SMI changelog](https://github.com/ROCm/rocm_smi_lib/blob/rele
 #### Added 
 
 - Support for VA-API and rocDecode tracing.
+- Aggregation of MPI data collected across distributed nodes and ranks. The data is concatenated into a single proto file.
+
+
+#### Changed
+- Backend refactored to use [ROCprofiler-SDK](https://github.com/ROCm/rocprofiler-sdk) rather than [ROCProfiler](https://github.com/ROCm/rocprofiler) and [ROCTracer](https://github.com/ROCm/ROCTracer).
 
 #### Resolved issues
 
@@ -1257,9 +1267,9 @@ See the full [ROCm SMI changelog](https://github.com/ROCm/rocm_smi_lib/blob/rele
 - Fixed interruption in config file generation.
 
 - Fixed segmentation fault while running rocprof-sys-instrument.
+- Fixed an issue where running `rocprof-sys-causal` or using the `-I all` option with `rocprof-sys-sample` caused the system to become non-responsive.
 
-#### Changed
-- Backend refactored to use [ROCprofiler-SDK](https://github.com/ROCm/rocprofiler-sdk) rather than [ROCProfiler](https://github.com/ROCm/rocprofiler) and [ROCTracer](https://github.com/ROCm/ROCTracer).
+- Fixed an issue where sampling multi-GPU Python workloads caused the system to stop responding.
 
 ### **rocPRIM** (3.4.0)
 

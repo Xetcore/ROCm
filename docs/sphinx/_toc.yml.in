@@ -36,6 +36,10 @@ subtrees:
     title: Use ROCm for AI
     subtrees:
     - entries:
+      - file: how-to/rocm-for-ai/install.rst
+        title: Installation
+      - file: how-to/rocm-for-ai/system-health-check.rst
+        title: System health benchmarks
       - file: how-to/rocm-for-ai/training/index.rst
         title: Training
         subtrees:
@@ -70,8 +74,6 @@ subtrees:
         title: Inference
         subtrees:
         - entries:
-          - file: how-to/rocm-for-ai/inference/install.rst
-            title: Installation
           - file: how-to/rocm-for-ai/inference/hugging-face-models.rst
             title: Run models from Hugging Face
           - file: how-to/rocm-for-ai/inference/llm-inference-frameworks.rst
