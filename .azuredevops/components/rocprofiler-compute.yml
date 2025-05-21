@@ -44,7 +44,7 @@ parameters:
 - name: rocmDependencies
   type: object
   default:
-    - amdsmi
+    # - amdsmi
     - clr
     - llvm-project
     - rocm-cmake
@@ -115,6 +115,10 @@ jobs:
       parameters:
         checkoutRepo: ${{ parameters.checkoutRepo }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
+    - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/local-artifact-download.yml
+      parameters:
+        buildType: specific
+        buildId: 29999
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
         checkoutRef: ${{ parameters.checkoutRef }}
@@ -181,6 +185,10 @@ jobs:
         postTargetFilter: ${{ job.dependencySource }}
         gpuTarget: ${{ job.target }}
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-aqlprofile.yml
+    - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/local-artifact-download.yml
+      parameters:
+        buildType: specific
+        buildId: 29999
     - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/dependencies-rocm.yml
       parameters:
         checkoutRef: ${{ parameters.checkoutRef }}
