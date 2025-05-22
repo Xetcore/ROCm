@@ -26,6 +26,43 @@ jobs:
   steps:
     - checkout: none
     - task: Bash@3
+      displayName: Setup
+      inputs:
+        targetType: inline
+        script: |
+          sudo DEBIAN_FRONTEND=noninteractive apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y tzdata
+          sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
+          sudo DEBIAN_FRONTEND=noninteractive apt install python3 python3-venv python3-pip
+
+    - task: Bash@3
+      displayName: Install Python wheels
+      continueOnError: true
+      env:
+        SPRINGFIELD_URL: $(SPRINGFIELD_URL)
+      inputs:
+        targetType: inline
+        script: |
+          which python3 && python3 --version
+          python3 -m venv $(Agent.BuildDirectory)/venv
+          source $(Agent.BuildDirectory)/venv/bin/activate
+          which python3 && python3 --version
+
+          pip install $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.apexFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.tritonFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
+
+          pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
+
+    - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
+      displayName: Test PyTorch import
+      continueOnError: true
+    - script: python3 -c 'import torch; print(torch.cuda.is_available())'
+      displayName: Test PyTorch is_available()
+      continueOnError: true
+
+    - task: Bash@3
       displayName: Download installer
       env:
         SPRINGFIELD_URL: $(SPRINGFIELD_URL)
@@ -36,12 +73,7 @@ jobs:
       displayName: Install ROCm
       inputs:
         targetType: inline
-        script: |
-          sudo DEBIAN_FRONTEND=noninteractive apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y tzdata
-          sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
-          chmod +x ./rocm-installer.run
-          ./rocm-installer.run target="$(Agent.BuildDirectory)" deps=install rocm postrocm
+        script: chmod +x ./rocm-installer.run && ./rocm-installer.run target="$(Agent.BuildDirectory)" deps=install rocm postrocm
     - task: Bash@3
       displayName: List files
       inputs:
@@ -119,6 +151,7 @@ jobs:
       inputs:
         targetType: inline
         script: |
+          cd $(Agent.BuildDirectory)
           git clone https://github.com/ROCm/rocm-examples.git
           cd rocm-examples
           git checkout baae3b15bc300871b2d6830c4b170f2d7bb7c64b
@@ -139,30 +172,3 @@ jobs:
         searchFolder: $(Agent.BuildDirectory)/rocm-examples/build
         testResultsFormat: JUnit
         testResultsFiles: rocm-examples_results.xml
-
-    - task: Bash@3
-      displayName: Install Python wheels
-      continueOnError: true
-      env:
-        SPRINGFIELD_URL: $(SPRINGFIELD_URL)
-      inputs:
-        targetType: inline
-        script: |
-          which python3 && python3 --version
-          python3 -m venv $(Agent.BuildDirectory)/venv
-          source $(Agent.BuildDirectory)/venv/bin/activate
-          which python3 && python3 --version
-
-          pip install $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.apexFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.tritonFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
-
-          pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
-
-    - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
-      displayName: Test PyTorch import
-      continueOnError: true
-    - script: python3 -c 'import torch; print(torch.cuda.is_available())'
-      displayName: Test PyTorch is_available()
-      continueOnError: true
