@@ -32,12 +32,12 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
           mkdir -p $(Agent.BuildDirectory)
           chmod +x ./rocm-installer.run
-          ./rocm-installer.run target='$(Agent.BuildDirectory)' deps=install rocm postrocm
+          ./rocm-installer.run target="$(Agent.BuildDirectory)" deps=install rocm postrocm
     - task: Bash@3
-      displayName: List ROCm files
+      displayName: List files
       inputs:
         targetType: inline
-        script: ls -la1R $(Agent.BuildDirectory)/rocm
+        script: ls -la1R $(Agent.BuildDirectory)
     - task: Bash@3
       displayName: Setup & basic tests
       inputs:
@@ -48,7 +48,29 @@ jobs:
           export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ROCM_PATH/lib:$ROCM_PATH/llvm/lib
           export CXX=$ROCM_PATH/bin/amdclang++
           export CC=$ROCM_PATH/bin/amdclang
-          rocminfo
-          rocm_agent_enumerator
-          rocm-smi
-          amd-smi
+
+          echo "##vso[task.setvariable variable=ROCM_PATH]$ROCM_PATH"
+          echo "##vso[task.prependpath]$ROCM_PATH/bin"
+          echo "##vso[task.setvariable variable=LD_LIBRARY_PATH]$LD_LIBRARY_PATH"
+          echo "##vso[task.setvariable variable=CXX]$CXX"
+          echo "##vso[task.setvariable variable=CC]$CC"
+    - task: Bash@3
+      displayName: rocminfo
+      inputs:
+        targetType: inline
+        script: rocminfo
+    - task: Bash@3
+      displayName: rocm_agent_enumerator
+      inputs:
+        targetType: inline
+        script: rocm_agent_enumerator
+    - task: Bash@3
+      displayName: rocm-smi
+      inputs:
+        targetType: inline
+        script: rocm-smi
+    - task: Bash@3
+      displayName: amd-smi
+      inputs:
+        targetType: inline
+        script: amd-smi
