@@ -1,5 +1,15 @@
 parameters:
-- name: filename
+- name: rocmFilename
+  type: string
+- name: wheelVersion
+  type: string
+- name: apexFilename
+  type: string
+- name: tritonFilename
+  type: string
+- name: torchFilename
+  type: string
+- name: visionFilename
   type: string
 
 trigger: none
@@ -21,7 +31,7 @@ jobs:
         SPRINGFIELD_URL: $(SPRINGFIELD_URL)
       inputs:
         targetType: inline
-        script: wget -nv "$SPRINGFIELD_URL/rocm/${{ parameters.filename }}" -O rocm-installer.run
+        script: wget -nv "$SPRINGFIELD_URL/rocm/${{ parameters.rocmFilename }}" -O rocm-installer.run
     - task: Bash@3
       displayName: Install ROCm
       inputs:
@@ -53,34 +63,102 @@ jobs:
           echo "##vso[task.setvariable variable=LD_LIBRARY_PATH]$LD_LIBRARY_PATH"
           echo "##vso[task.setvariable variable=CXX]$CXX"
           echo "##vso[task.setvariable variable=CC]$CC"
+
     - script: rocminfo
+      displayName: rocminfo
+      continueOnError: true
     - script: rocm_agent_enumerator
+      displayName: rocm_agent_enumerator
+      continueOnError: true
     - script: rocm-smi
+      displayName: rocm-smi
+      continueOnError: true
     - script: amd-smi
+      displayName: amd-smi
+      continueOnError: true
     - script: amd-smi version
+      displayName: amd-smi version
+      continueOnError: true
     - script: amd-smi list
+      displayName: amd-smi list
+      continueOnError: true
     - script: amd-smi static
+      displayName: amd-smi static
+      continueOnError: true
     - script: amd-smi metric
+      displayName: amd-smi metric
+      continueOnError: true
 
     - task: Bash@3
-      displayName: Build rocDecode tests
+      displayName: Build rocDecode
+      condition: succeededOrFailed()
       inputs:
         targetType: inline
         script: |
-          mkdir $(Agent.BuildDirectory)/rocdecode/test
-          cd $(Agent.BuildDirectory)/rocdecode/test
+          mkdir -p $(Agent.BuildDirectory)/rocdecode
+          cd $(Agent.BuildDirectory)/rocdecode
           cmake $ROCM_PATH/share/rocdecode/test
     - task: Bash@3
-      displayName: Run rocDecode tests
-      continueOnError: true
+      displayName: Test rocDecode
+      condition: succeededOrFailed()
       inputs:
         targetType: inline
         script: ctest --output-on-failure --output-junit rocdecode_results.xml
-        workingDirectory: $(Agent.BuildDirectory)/rocdecode/test
+        workingDirectory: $(Agent.BuildDirectory)/rocdecode
     - task: PublishTestResults@2
-      displayName: Publish rocDecode tests
+      displayName: Publish rocDecode
       condition: succeededOrFailed()
       inputs:
-        searchFolder: $(Agent.BuildDirectory)/rocdecode/test
+        searchFolder: $(Agent.BuildDirectory)/rocdecode
         testResultsFormat: JUnit
         testResultsFiles: rocdecode_results.xml
+
+    - task: Bash@3
+      displayName: Build rocm-examples
+      condition: succeededOrFailed()
+      inputs:
+        targetType: inline
+        script: |
+          git clone https://github.com/ROCm/rocm-examples.git
+          cd rocm-examples
+          mkdir build && cd build
+          cmake .. -DROCM_ROOT=$ROCM_PATH -DGPU_TARGETS=gfx942
+          cmake --build . -- -j$(nproc)
+    - task: Bash@3
+      displayName: Test rocm-examples
+      condition: succeededOrFailed()
+      inputs:
+        targetType: inline
+        script: ctest --output-on-failure --output-junit rocm-examples_results.xml
+        workingDirectory: $(Agent.BuildDirectory)/rocm-examples/build
+    - task: PublishTestResults@2
+      displayName: Publish rocm-examples
+      condition: succeededOrFailed()
+      inputs:
+        searchFolder: $(Agent.BuildDirectory)/rocm-examples/build
+        testResultsFormat: JUnit
+        testResultsFiles: rocm-examples_results.xml
+
+    - task: Bash@3
+      displayName: Install Python wheels
+      env:
+        SPRINGFIELD_URL: $(SPRINGFIELD_URL)
+      inputs:
+        targetType: inline
+        script: |
+          which python3 && python3 --version
+          python3 -m venv $(Agent.BuildDirectory)/venv
+          source $(Agent.BuildDirectory)/venv/bin/activate
+          which python3 && python3 --version
+
+          pip install $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.apexFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.tritonFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
+            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
+
+          pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
+
+    - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
+      displayName: Test PyTorch import
+    - script: python3 -c 'import torch; print(torch.cuda.is_available())'
+      displayName: Test PyTorch is_available()
