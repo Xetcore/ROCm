@@ -47,15 +47,15 @@ jobs:
           source $(Agent.BuildDirectory)/venv/bin/activate
           which python3 && python3 --version
 
-          pip install $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.apexFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.tritonFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
-            $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
+          # pip install $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.apexFilename }} \
+          #   $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.tritonFilename }} \
+          #   $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
+          #   $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
 
-          pip install packaging
+          pip install packaging wheel
           pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
 
-    - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
+    - script: python3 -c 'import torch'
       displayName: Test PyTorch import
       continueOnError: true
     - script: python3 -c 'import torch; print(torch.cuda.is_available())'
