@@ -55,10 +55,10 @@ jobs:
           pip install packaging wheel
           pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
 
-    - script: python3 -c 'import torch'
+    - script: source $(Agent.BuildDirectory)/venv/bin/activate && python3 -c 'import torch'
       displayName: Test PyTorch import
       continueOnError: true
-    - script: python3 -c 'import torch; print(torch.cuda.is_available())'
+    - script: source $(Agent.BuildDirectory)/venv/bin/activate && python3 -c 'import torch; print(torch.cuda.is_available())'
       displayName: Test PyTorch is_available()
       continueOnError: true
 
