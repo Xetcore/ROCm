@@ -192,12 +192,19 @@ jobs:
         script: ./rccl-UnitTests --gtest_color=yes --gtest_output=xml:./rccl_results.xml
         workingDirectory: $(Agent.BuildDirectory)/rccl/build/bin
     - task: PublishTestResults@2
-      displayName: Publish rocm-examples
+      displayName: Publish rccl
       continueOnError: true
       inputs:
         searchFolder: $(Agent.BuildDirectory)/rccl/build
         testResultsFormat: JUnit
         testResultsFiles: rccl_results.xml
+
+    - task: Bash@3
+      displayName: Test ROCmValidationSuite
+      continueOnError: true
+      inputs:
+        targetType: inline
+        script: $(Agent.BuildDirectory)/share/rocm-validation-suite/testscripts/rvsqa.new.sh
 
     - task: Bash@3
       displayName: List files
