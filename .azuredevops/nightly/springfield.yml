@@ -1,5 +1,5 @@
 parameters:
-- name: runfileUrl
+- name: filename
   type: string
 
 trigger: none
@@ -16,9 +16,11 @@ jobs:
   steps:
     - task: Bash@3
       displayName: Download runfile
+      env:
+        SPRINGFIELD_URL: $(SPRINGFIELD_URL)
       inputs:
         targetType: inline
-        script: wget -nv ${{ parameters.runfileUrl }} -O rocm-installer.run
+        script: wget -nv '$SPRINGFIELD_URL/rocm/${{ parameters.filename }}' -O rocm-installer.run
     - task: Bash@3
       displayName: Install runfile
       inputs:
