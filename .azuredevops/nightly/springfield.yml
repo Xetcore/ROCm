@@ -32,7 +32,6 @@ jobs:
         script: |
           sudo DEBIAN_FRONTEND=noninteractive apt update
           sudo DEBIAN_FRONTEND=noninteractive apt install -y tzdata
-          sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
           sudo DEBIAN_FRONTEND=noninteractive apt install -y python3.11 python3.11-venv
 
     - task: Bash@3
@@ -53,6 +52,7 @@ jobs:
             $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.torchFilename }} \
             $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
 
+          pip install packaging
           pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
 
     - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
