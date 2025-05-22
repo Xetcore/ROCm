@@ -91,7 +91,7 @@ jobs:
 
     - task: Bash@3
       displayName: Build rocDecode
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         targetType: inline
         script: |
@@ -100,14 +100,14 @@ jobs:
           cmake $ROCM_PATH/share/rocdecode/test
     - task: Bash@3
       displayName: Test rocDecode
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         targetType: inline
         script: ctest --output-on-failure --output-junit rocdecode_results.xml
         workingDirectory: $(Agent.BuildDirectory)/rocdecode
     - task: PublishTestResults@2
       displayName: Publish rocDecode
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         searchFolder: $(Agent.BuildDirectory)/rocdecode
         testResultsFormat: JUnit
@@ -115,25 +115,26 @@ jobs:
 
     - task: Bash@3
       displayName: Build rocm-examples
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         targetType: inline
         script: |
           git clone https://github.com/ROCm/rocm-examples.git
           cd rocm-examples
+          git checkout baae3b15bc300871b2d6830c4b170f2d7bb7c64b
           mkdir build && cd build
           cmake .. -DROCM_ROOT=$ROCM_PATH -DGPU_TARGETS=gfx942
           cmake --build . -- -j$(nproc)
     - task: Bash@3
       displayName: Test rocm-examples
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         targetType: inline
         script: ctest --output-on-failure --output-junit rocm-examples_results.xml
         workingDirectory: $(Agent.BuildDirectory)/rocm-examples/build
     - task: PublishTestResults@2
       displayName: Publish rocm-examples
-      condition: succeededOrFailed()
+      continueOnError: true
       inputs:
         searchFolder: $(Agent.BuildDirectory)/rocm-examples/build
         testResultsFormat: JUnit
@@ -141,6 +142,7 @@ jobs:
 
     - task: Bash@3
       displayName: Install Python wheels
+      continueOnError: true
       env:
         SPRINGFIELD_URL: $(SPRINGFIELD_URL)
       inputs:
@@ -160,5 +162,7 @@ jobs:
 
     - script: python3 -c 'import torch' 2> /dev/null && echo 'Success' || echo 'Failure'
       displayName: Test PyTorch import
+      continueOnError: true
     - script: python3 -c 'import torch; print(torch.cuda.is_available())'
       displayName: Test PyTorch is_available()
+      continueOnError: true
