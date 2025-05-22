@@ -16,17 +16,18 @@ jobs:
   steps:
     - checkout: none
     - task: Bash@3
-      displayName: Download runfile
+      displayName: Download installer
       env:
         SPRINGFIELD_URL: $(SPRINGFIELD_URL)
       inputs:
         targetType: inline
         script: wget -nv "$SPRINGFIELD_URL/rocm/${{ parameters.filename }}" -O rocm-installer.run
     - task: Bash@3
-      displayName: Install runfile
+      displayName: Install ROCm
       inputs:
         targetType: inline
         script: |
+          export DEBIAN_FRONTEND=noninteractive
           sudo apt update
           mkdir -p $(Agent.BuildDirectory)
           chmod +x ./rocm-installer.run
