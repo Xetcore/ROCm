@@ -172,3 +172,35 @@ jobs:
         searchFolder: $(Agent.BuildDirectory)/rocm-examples/build
         testResultsFormat: JUnit
         testResultsFiles: rocm-examples_results.xml
+
+    - task: Bash@3
+      displayName: Build rccl
+      continueOnError: true
+      inputs:
+        targetType: inline
+        script: |
+          cd $(Agent.BuildDirectory)
+          git clone https://github.com/ROCm/rccl.git
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DGPU_TARGETS=gfx942
+          cmake --build . -- -j$(nproc)
+    - task: Bash@3
+      displayName: Test rccl
+      continueOnError: true
+      inputs:
+        targetType: inline
+        script: ./rccl-UnitTests --gtest_color=yes --gtest_output=xml:./rccl_results.xml
+        workingDirectory: $(Agent.BuildDirectory)/rccl/build/bin
+    - task: PublishTestResults@2
+      displayName: Publish rocm-examples
+      continueOnError: true
+      inputs:
+        searchFolder: $(Agent.BuildDirectory)/rccl/build
+        testResultsFormat: JUnit
+        testResultsFiles: rccl_results.xml
+
+    - task: Bash@3
+      displayName: List files
+      inputs:
+        targetType: inline
+        script: ls -la1R $(Agent.BuildDirectory)
