@@ -29,8 +29,8 @@ jobs:
       inputs:
         targetType: inline
         script: |
-          export DEBIAN_FRONTEND=noninteractive
-          sudo apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
           mkdir -p $(Agent.BuildDirectory)
           chmod +x ./rocm-installer.run
           ./rocm-installer.run target='$(Agent.BuildDirectory)' deps=install rocm postrocm
