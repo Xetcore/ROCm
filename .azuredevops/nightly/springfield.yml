@@ -53,7 +53,7 @@ jobs:
             $(SPRINGFIELD_URL)/wheels/${{ parameters.wheelVersion }}/rocroller/${{ parameters.visionFilename }}
 
           pip install packaging wheel
-          pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
+          CUDA_HOME=$ROCM_PATH pip install git+https://github.com/rocm/flash-attention.git@ck_tile/fa3_fremont --no-build-isolation
 
     - script: source $(Agent.BuildDirectory)/venv/bin/activate && python3 -c 'import torch'
       displayName: Test PyTorch import
