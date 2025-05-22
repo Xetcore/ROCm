@@ -6,7 +6,7 @@ trigger: none
 pr: none
 
 jobs:
-- job: Essanay
+- job: springfield
   variables:
   - group: common
   - template: /.azuredevops/variables-global.yml
@@ -14,13 +14,14 @@ jobs:
   workspace:
     clean: all
   steps:
+    - checkout: none
     - task: Bash@3
       displayName: Download runfile
       env:
         SPRINGFIELD_URL: $(SPRINGFIELD_URL)
       inputs:
         targetType: inline
-        script: wget -nv '$SPRINGFIELD_URL/rocm/${{ parameters.filename }}' -O rocm-installer.run
+        script: wget -nv "$SPRINGFIELD_URL/rocm/${{ parameters.filename }}" -O rocm-installer.run
     - task: Bash@3
       displayName: Install runfile
       inputs:
