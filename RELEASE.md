@@ -165,7 +165,7 @@ Click {fab}`github` to go to the component's source code on GitHub.
                 <td><a href="https://github.com/ROCm/rccl"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
             <tr>
-            <td><a href="https://github.com/ROCm/rocSHMEM">rocSHMEM</a></td>
+            <td><a href="https://rocm.docs.amd.com/projects/rocSHMEM/en/docs-6.4.1/index.html">rocSHMEM</a></td>
                 <td>2.0.0</td>
                 <td><a href="https://github.com/ROCm/rocSHMEM"><i class="fab fa-github fa-lg"></i></a></td>
             </tr>
