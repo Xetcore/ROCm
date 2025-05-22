@@ -24,12 +24,11 @@ jobs:
         script: wget -nv "$SPRINGFIELD_URL/rocm/${{ parameters.filename }}" -O rocm-installer.run
     - task: Bash@3
       displayName: Install ROCm
-      env:
-        DEBIAN_FRONTEND: noninteractive
       inputs:
         targetType: inline
         script: |
           sudo DEBIAN_FRONTEND=noninteractive apt update
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y tzdata
           sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
           mkdir -p $(Agent.BuildDirectory)
           chmod +x ./rocm-installer.run
