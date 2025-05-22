@@ -1,0 +1,26 @@
+parameters:
+- name: runfileUrl
+  type: string
+
+trigger: none
+pr: none
+
+jobs:
+- job: Essanay
+  variables:
+  - group: common
+  - template: /.azuredevops/variables-global.yml
+  pool: ${{ variables.GFX942_TEST_POOL }}
+  workspace:
+    clean: all
+  steps:
+    - task: Bash@3
+      displayName: script
+      inputs:
+        targetType: inline
+        script: |
+          sudo apt update
+          wget ${{ parameters.runfileUrl }} -O rocm-installer.run
+          chmod +x ./rocm-installer.run
+          mkdir -p $(Agent.BuildDirectory)/rocm
+          ./rocm-installer.run target='$(Agent.BuildDirectory)/rocm' deps=install rocm postrocm
