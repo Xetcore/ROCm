@@ -1,8 +1,8 @@
 # entrypoint for kicking off a unified build of the mathlibs
 # this template is designed to be called by another pipeline (llvm, clr, etc.)
 # `buildDependsOn` will need to be set when calling this template
-# sets `unifiedBuild` to true, which will prevent duplicate jobs
-# logic needs to be added in individual mathlib pipelines for handling the `unifiedBuild` param
+# passes a `unifiedBuild` param to downstream pipelines, which will prevent duplicate jobs
+# logic needs to be added in individual mathlib pipelines for handling `unifiedBuild`
 
 parameters:
 - name: buildDependsOn
