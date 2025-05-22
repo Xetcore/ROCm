@@ -30,7 +30,6 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt update
           sudo DEBIAN_FRONTEND=noninteractive apt install -y tzdata
           sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y
-          mkdir -p $(Agent.BuildDirectory)
           chmod +x ./rocm-installer.run
           ./rocm-installer.run target="$(Agent.BuildDirectory)" deps=install rocm postrocm
     - task: Bash@3
@@ -39,7 +38,7 @@ jobs:
         targetType: inline
         script: ls -la1R $(Agent.BuildDirectory)
     - task: Bash@3
-      displayName: Setup & basic tests
+      displayName: Set env vars
       inputs:
         targetType: inline
         script: |
@@ -62,3 +61,26 @@ jobs:
     - script: amd-smi list
     - script: amd-smi static
     - script: amd-smi metric
+
+    - task: Bash@3
+      displayName: Build rocDecode tests
+      inputs:
+        targetType: inline
+        script: |
+          mkdir $(Agent.BuildDirectory)/rocdecode/test
+          cd $(Agent.BuildDirectory)/rocdecode/test
+          cmake $ROCM_PATH/share/rocdecode/test
+    - task: Bash@3
+      displayName: Run rocDecode tests
+      continueOnError: true
+      inputs:
+        targetType: inline
+        script: ctest --output-on-failure --output-junit rocdecode_results.xml
+        workingDirectory: $(Agent.BuildDirectory)/rocdecode/test
+    - task: PublishTestResults@2
+      displayName: Publish rocDecode tests
+      condition: succeededOrFailed()
+      inputs:
+        searchFolder: $(Agent.BuildDirectory)/rocdecode/test
+        testResultsFormat: JUnit
+        testResultsFiles: rocdecode_results.xml
