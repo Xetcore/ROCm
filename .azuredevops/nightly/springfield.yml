@@ -181,6 +181,7 @@ jobs:
         script: |
           cd $(Agent.BuildDirectory)
           git clone https://github.com/ROCm/rccl.git
+          cd rccl
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DGPU_TARGETS=gfx942
           cmake --build . -- -j$(nproc)
@@ -204,7 +205,7 @@ jobs:
       continueOnError: true
       inputs:
         targetType: inline
-        script: $(Agent.BuildDirectory)/share/rocm-validation-suite/testscripts/rvsqa.new.sh
+        script: $(Agent.BuildDirectory)/rocm/share/rocm-validation-suite/testscripts/rvsqa.new.sh
 
     - task: Bash@3
       displayName: List files
