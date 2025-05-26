@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import dbm
 import sys
 from typing import Dict, List, Optional, TextIO, Tuple, Union
-import xml.etree.ElementTree as ET
+import toml
 import urllib.request
 import argparse
 from github import Github, NamedUser
@@ -189,14 +189,15 @@ def run_tagging():
     args = parse_arguments()
 
     # Use the manifest included in the ROCm GitHub repository by default.
+    DEFAULT_MANIFEST_PATH = "./components.toml"
     if args.manifest_url is None:
-        manifest_path = (
-            "./components.xml"
-        )
+        manifest_path = DEFAULT_MANIFEST_PATH
     else:
         manifest_url = args.manifest_url
-        manifest_path, _ = urllib.request.urlretrieve(manifest_url, "manifest.xml")
-    manifest_tree = ET.parse(manifest_path).getroot()
+        manifest_path, _ = urllib.request.urlretrieve(manifest_url, "manifest.toml")
+    
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest_data = toml.load(f)
 
     # Fallback as unauthenticated user for accessing the GitHub API.
     try:
@@ -221,11 +222,11 @@ def run_tagging():
     remote_map: Dict[str, str] = { }
 
     # Fill the remote map with the remotes defined in the manifest.
-    for entry in manifest_tree.findall(".//remote"):
-        remote_name = entry.get("name")
-        remote_url  = entry.get("fetch").lstrip("https://github.com/").rstrip("/")
-        remote_map[remote_name] = remote_url
-
+    if "remote" in manifest_data:
+        for remote_name, remote_config in manifest_data["remote"].items():
+            remote_url = remote_config.get("fetch", "").lstrip("https://github.com/").rstrip("/")
+            remote_map[remote_name] = remote_url
+    
     # Creates a collection of ROCm libraries grouped by release.
     release_bundle_factory = ReleaseBundleFactory(
         "ROCm/ROCm",
@@ -242,16 +243,18 @@ def run_tagging():
         "compilers",
         "runtimes",
     ]
-    projects = []
-    for project in manifest_tree.iterfind(".//project"):
-        if project.get("category") in included_categories:
-            projects.append(project)
-    component_information = list(
-        (entry.get("name"), 
-         entry.get("remote"),
-         entry.get("group"),
-         entry.get("category"),
-        ) for entry in projects)
+    component_information = []
+    if "project" in manifest_data:
+        for project in manifest_data["project"]:
+            if project.get("category") in included_categories:
+                component_information.append(
+                    (
+                        project.get("name"),
+                        project.get("remote", manifest_data.get("default", {}).get("remote")), # Fallback to default remote
+                        project.get("group"),
+                        project.get("category"),
+                    )
+                )
 
     # Get all the relevant ROCm releases
     minimum_version = args.version if not args.starting_version else args.starting_version
