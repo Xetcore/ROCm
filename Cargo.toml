@@ -1,3 +1,4 @@
+workspace = { members = ["rust_hip_info"] }
 [package]
 name = "rocm-build"
 version = "0.1.0"
