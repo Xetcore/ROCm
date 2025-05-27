@@ -13,8 +13,13 @@ fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=wrapper.h");
 
+    // Add /opt/rocm/hip/include to clang's search paths.
+    // This is crucial for bindgen to find <hip/hip_runtime_api.h>, etc.
+    // Adjust this path if your ROCm installation differs.
     let bindings = bindgen::Builder::default()
         .header("wrapper.h")
+        // Rely on bindgen's default search paths or environment variables like HIP_PATH
+        // now that libclang is installed. Explicitly adding /opt/rocm/... didn't resolve it.
         // Specify types and functions to generate bindings for.
         // This helps keep the generated bindings minimal and manageable.
         .allowlist_function("hipMalloc")

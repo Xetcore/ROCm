@@ -11,6 +11,7 @@ env_logger = "0.10"
 libc = "0.2"
 log = "0.4"
 scopeguard = "1.2.0"
+home = "=0.5.9" # Pinned to be compatible with Rustc 1.75
 
 [build-dependencies]
-bindgen = "0.69"
+bindgen = "0.69.0"

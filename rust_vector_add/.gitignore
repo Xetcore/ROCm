@@ -1,0 +1,5 @@
+target/
+# Also ignore the compiled kernel object file if it's placed in the root
+# or any other specific location that shouldn't be versioned.
+# For this project, it's assumed to be in the root, so:
+*.co

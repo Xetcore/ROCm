@@ -117,3 +117,59 @@ Error: Verification failed.
     *   Compares the GPU result with the CPU result.
     *   Cleans up all allocated GPU resources (`hipFree`, `hipModuleUnload`) using `scopeguard` to ensure cleanup even in case of errors.
 4.  **Error Handling**: The `hip_call!` macro in `hip_utils.rs` wraps each HIP API call. It checks the `hipError_t` return code and converts any error into an `anyhow::Result`, providing a descriptive error message.
+
+## FFI (Foreign Function Interface) Intricacies
+
+Interfacing Rust with C/C++ code like the HIP runtime involves several components:
+
+*   **`wrapper.h`**: This is a C++ header file that includes the necessary HIP API headers (e.g., `hip/hip_runtime_api.h`). It acts as the single point of entry for `bindgen` to understand the C/C++ functions, types, and constants we want to use from Rust.
+*   **`build.rs`**: This is a Rust script that Cargo executes at compile time. In this project, `build.rs` uses the `bindgen` crate to:
+    1.  Parse `wrapper.h`.
+    2.  Generate Rust bindings (function signatures, type definitions, constant declarations) for the HIP API elements specified in the `allowlist_` configurations.
+    3.  Write these bindings to a `bindings.rs` file in the `OUT_DIR` (a directory managed by Cargo for build artifacts).
+    4.  Link Rust against the HIP runtime library (e.g., `libamdhip64.so` on Linux) using `cargo:rustc-link-lib` and potentially `cargo:rustc-link-search` to specify library paths.
+*   **`src/hip_utils.rs` (Bindings Inclusion)**: The generated `bindings.rs` is included into the main crate using `include!(concat!(env!("OUT_DIR"), "/bindings.rs"));`. This makes the raw, `unsafe` FFI bindings available within the `hip_utils` module.
+*   **Safe Wrappers**: While `bindgen` provides the direct FFI calls, these are typically `unsafe`. The `hip_utils.rs` file also defines safe wrappers (like the `hip_call!` macro) around these unsafe functions to handle error checking and provide a more idiomatic Rust interface.
+
+**Potential Considerations**:
+*   **HIP SDK Path**: The `build.rs` script might need to know where the HIP SDK headers and libraries are located. This is often handled by environment variables (e.g., `HIP_PATH`) or standard installation paths like `/opt/rocm`.
+*   **`libclang` Dependency**: `bindgen` relies on `libclang` to parse C/C++ headers. Ensure `libclang` is installed on the build system.
+*   **API Coverage**: `bindgen` can generate bindings for a vast amount of code. It's good practice to use `allowlist_function`, `allowlist_type`, etc., to keep the generated bindings minimal to only what's necessary, reducing compile times and code size.
+
+## Key HIP API Functions Used
+
+This project utilizes several important HIP runtime API functions via FFI:
+
+*   **`hipMalloc(void** ptr, size_t size)`**: Allocates memory on a GPU device.
+*   **`hipFree(void* ptr)`**: Frees memory previously allocated on a GPU device.
+*   **`hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind)`**: Copies memory between host and device, or device and device. `kind` specifies the direction (e.g., `hipMemcpyHostToDevice`, `hipMemcpyDeviceToHost`).
+*   **`hipModuleLoadData(hipModule_t* module, const void* image)`**: Loads a compiled HIP kernel (a `.co` file, Code Object) into the current GPU context and returns a module handle. The `image` is a pointer to the raw byte content of the `.co` file.
+*   **`hipModuleUnload(hipModule_t module)`**: Unloads a previously loaded HIP module.
+*   **`hipModuleGetFunction(hipFunction_t* function, hipModule_t module, const char* kname)`**: Retrieves a handle to a specific kernel function within a loaded module, identified by its name (`kname`).
+*   **`hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, ..., unsigned int blockDimZ, unsigned int sharedMemBytes, hipStream_t stream, void** kernelParams, void** extra)`**: Launches a kernel function `f` on the GPU.
+    *   `gridDimX/Y/Z`: Dimensions of the grid of thread blocks.
+    *   `blockDimX/Y/Z`: Dimensions of each thread block.
+    *   `sharedMemBytes`: Amount of dynamic shared memory to allocate for this kernel launch.
+    *   `stream`: The HIP stream on which to launch the kernel (0 for default stream).
+    *   `kernelParams`: An array of pointers to the actual arguments for the kernel function.
+    *   `extra`: Extra options for the launch (usually `nullptr`).
+*   **`hipDeviceSynchronize()`**: Blocks the calling host thread until all previously issued commands in all streams on the current device have completed.
+*   **`hipGetErrorString(hipError_t errorId)`**: Returns a C-string describing the given HIP error code. This is used by the `hip_call!` macro for error reporting.
+
+## GPU Programming Concepts Overview
+
+A brief understanding of these concepts helps in grasping the example:
+
+*   **Host vs. Device**: The **host** is the CPU and its memory. The **device** is the GPU and its memory. Code in `main.rs` runs on the host. The `vectorAdd` kernel runs on the device.
+*   **Kernel**: A function (like `vectorAdd_kernel.hip::vectorAdd`) that is written to be executed on the GPU by many threads in parallel.
+*   **Thread Hierarchy**:
+    *   **Grid**: A 3D arrangement of thread blocks. When launching a kernel, you define the grid's dimensions.
+    *   **Block**: A 3D group of threads that execute a kernel. Threads within a block can cooperate (e.g., using shared memory and synchronization).
+    *   **Thread**: The fundamental unit of execution on the GPU, running an instance of the kernel.
+*   **Memory Spaces**:
+    *   **Global Memory**: Large, relatively slow memory accessible by all threads on the GPU (where `d_A`, `d_B`, `d_C` reside).
+    *   **Shared Memory**: Smaller, faster memory accessible by all threads within the same block. Not explicitly used in this basic `vectorAdd` example's kernel, but `sharedMemBytes` in `hipModuleLaunchKernel` could allocate it.
+    *   **Local Memory**: Private memory for each thread (registers, stack).
+*   **Data Transfers**: Data must be explicitly copied between host memory and device global memory using functions like `hipMemcpy` before the GPU can access it and after results are computed.
+*   **Asynchronous Execution**: Many GPU operations (like kernel launches and some memory copies) are asynchronous. The host queues the operation and can continue execution. `hipDeviceSynchronize` is used to wait for GPU tasks to complete.
+```
