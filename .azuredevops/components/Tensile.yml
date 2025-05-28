@@ -70,6 +70,19 @@ jobs:
       dependencyList: ${{ parameters.rocmDependencies }}
       aggregatePipeline: ${{ parameters.aggregatePipeline }}
   - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/manifest.yml
+  - task: UseRust@0
+    displayName: 'Install Rust'
+    inputs:
+      version: 'stable' # Or a specific version if required
+      performLanguageInstallation: true
+
+  - task: Cargo@2
+    displayName: 'Build find-first-whl utility'
+    inputs:
+      command: 'build'
+      manifestPath: '$(Build.SourcesDirectory)/find_first_whl/Cargo.toml' # Assuming find_first_whl is at the root
+      args: '--release'
+      workingDirectory: '$(Build.SourcesDirectory)/find_first_whl'
   - task: Bash@3
     displayName: Create wheel file
     inputs:
@@ -87,16 +100,12 @@ jobs:
     retryCountOnTaskFailure: 3
     inputs:
       targetPath: $(Build.ArtifactStagingDirectory)
-  - task: Bash@3
-    displayName: Save pipeline artifact file names
+  - task: CmdLine@2
+    displayName: 'Save pipeline artifact file name (Rust)'
     inputs:
-      workingDirectory: $(Pipeline.Workspace)
-      targetType: inline
       script: |
-        whlFile=$(find "$(Build.ArtifactStagingDirectory)" -type f -name "*.whl" | head -n 1)
-        if [ -n "$whlFile" ]; then
-          echo $(basename "$whlFile") >> pipelineArtifacts.txt
-        fi
+        "$(Build.SourcesDirectory)/find_first_whl/target/release/find-first-whl"             --search-dir "$(Build.ArtifactStagingDirectory)"             --output-file "$(Pipeline.Workspace)/pipelineArtifacts.txt"             --verbose
+      workingDirectory: '$(Pipeline.Workspace)' # Ensure output file path is correct
   - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/artifact-links.yml
   # - template: ${{ variables.CI_TEMPLATE_PATH }}/steps/docker-container.yml
   #   parameters:
