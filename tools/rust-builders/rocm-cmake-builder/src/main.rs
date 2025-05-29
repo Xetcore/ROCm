@@ -91,27 +91,61 @@ impl AppConfig {
         let rocm_cmake_root = args.rocm_cmake_root.canonicalize()
             .with_context(|| format!("Failed to find or access rocm-cmake-root path: {:?}", args.rocm_cmake_root))?;
 
-        let build_dir_default = rocm_cmake_root.join("build").join("rocm-cmake-builder");
-        let build_dir = args.build_dir
+        // Build Directory: CLI arg or default, then ensure absolute.
+        let build_dir_resolved = args.build_dir
             .map(|p| if p.is_absolute() { p } else { current_dir.join(&p) })
-            .unwrap_or(build_dir_default);
+            .unwrap_or_else(|| rocm_cmake_root.join("build").join("rocm-cmake-builder"));
+        let build_dir = if !build_dir_resolved.is_absolute() { current_dir.join(build_dir_resolved) } else { build_dir_resolved };
+        // No assert!(build_dir.is_absolute()) needed here as it's for an output dir that might not exist.
             
-        let package_root_default = rocm_cmake_root.join("dist");
-        let package_root = args.package_root
-            .map(|p| if p.is_absolute() { p } else { current_dir.join(&p) })
-            .unwrap_or(package_root_default);
+        // Package Root Directory: CLI arg, then OUT_DIR env, then default, then ensure absolute.
+        let package_root_resolved = match args.package_root {
+            Some(p) => if p.is_absolute() { p } else { current_dir.join(&p) },
+            None => {
+                match env::var("OUT_DIR").ok() {
+                    Some(out_dir_str) => {
+                        let out_dir_env = PathBuf::from(out_dir_str);
+                        if args.verbose { println!("Using OUT_DIR env var for package_root: {:?}", out_dir_env); }
+                        // OUT_DIR is typically an output path, attempt canonicalize but fallback to using path directly if it doesn't exist.
+                        out_dir_env.canonicalize().unwrap_or(out_dir_env) 
+                    }
+                    None => rocm_cmake_root.join("dist"),
+                }
+            }
+        };
+        let package_root = if !package_root_resolved.is_absolute() { current_dir.join(package_root_resolved) } else { package_root_resolved };
 
-        // Default install_prefix based on resolved package_root
-        let install_prefix = args.install_prefix
-            .map(|p| if p.is_absolute() { p } else { current_dir.join(&p) })
-            .unwrap_or_else(|| package_root.join("rocm"));
+
+        // Install Prefix Directory: CLI arg, then ROCM_INSTALL_PATH env, then ROCM_PATH env, then default, then ensure absolute.
+        let install_prefix_resolved = match args.install_prefix {
+            Some(p) => if p.is_absolute() { p } else { current_dir.join(&p) },
+            None => {
+                match env::var("ROCM_INSTALL_PATH").ok() {
+                    Some(rocm_install_str) => {
+                        let rocm_install_env = PathBuf::from(rocm_install_str);
+                        if args.verbose { println!("Using ROCM_INSTALL_PATH env var for install_prefix: {:?}", rocm_install_env); }
+                        rocm_install_env.canonicalize().unwrap_or(rocm_install_env)
+                    }
+                    None => match env::var("ROCM_PATH").ok() {
+                        Some(rocm_path_str) => {
+                            let rocm_path_env = PathBuf::from(rocm_path_str);
+                            if args.verbose { println!("Using ROCM_PATH env var for install_prefix: {:?}", rocm_path_env); }
+                            rocm_path_env.canonicalize().unwrap_or(rocm_path_env)
+                        }
+                        None => package_root.join("rocm"), // Use the resolved package_root here
+                    }
+                }
+            }
+        };
+        let install_prefix = if !install_prefix_resolved.is_absolute() { current_dir.join(install_prefix_resolved) } else { install_prefix_resolved };
+
 
         let deb_package_dir = package_root.join("deb").join("rocm-cmake");
         let rpm_package_dir = package_root.join("rpm").join("rocm-cmake");
 
         Ok(AppConfig {
             rocm_cmake_root,
-            install_prefix, // Initialized
+            install_prefix,
             build_dir,
             package_root,
             deb_package_dir,
