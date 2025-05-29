@@ -45,7 +45,7 @@
 (communication-libraries)=
 
 * {doc}`RCCL <rccl:index>`
-* {doc}`rocSHMEM <rocshmem:index>`
+* {doc}`rocSHMEM <rocSHMEM:index>`
 :::
 
 :::{grid-item-card} Math
