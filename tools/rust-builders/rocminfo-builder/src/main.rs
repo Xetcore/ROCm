@@ -1,6 +1,6 @@
 use clap::Parser;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result, anyhow}; // Ensure anyhow is imported for anyhow::anyhow!
+use anyhow::{Context, Result, anyhow}; 
 use std::env; 
 use std::fs; 
 use std::process::Command; 
@@ -9,7 +9,7 @@ use glob::glob;
 
 /// Rust equivalent of the build_rocminfo.sh script.
 /// Handles building and packaging of the rocminfo utility.
-#[derive(Parser, Debug, Clone)] // Added Clone
+#[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 struct CliArgs {
     /// Path to the rocminfo source directory (replaces ROCMINFO_ROOT env var).
@@ -64,12 +64,24 @@ struct CliArgs {
     jobs: Option<usize>,
 
     /// Specify packaging format to copy (e.g. "deb", "rpm", "all").
-    #[arg(long, value_name = "TYPE", default_value = "all")] // Already present from previous step
+    #[arg(long, value_name = "TYPE", default_value = "all")]
     package_type: String,
 
     /// Optional: Print path of output directory for specified package type (deb, rpm) and exit.
     #[arg(long)]
-    outdir_target: Option<String>, // New argument
+    outdir_target: Option<String>,
+
+    /// Optional: RPATH for ROCm executables.
+    #[arg(long, value_name = "RPATH_STR")]
+    rocm_exe_rpath: Option<String>,
+
+    /// Optional: RPATH for ROCm shared libraries.
+    #[arg(long, value_name = "RPATH_STR")]
+    rocm_lib_rpath: Option<String>,
+
+    /// Optional: RPATH for ROCm ASan shared libraries.
+    #[arg(long, value_name = "RPATH_STR")]
+    rocm_asan_lib_rpath: Option<String>,
 
     /// Enable verbose logging.
     #[arg(long, short = 'v', action = clap::ArgAction::SetTrue)]
@@ -95,6 +107,9 @@ struct AppConfig {
     gpu_list_cmake: Option<String>, 
     jobs: Option<usize>, 
     package_type_to_copy: String, 
+    rocm_exe_rpath: String,
+    rocm_lib_rpath: String,
+    rocm_asan_lib_rpath: String,
     verbose: bool,
 }
 
@@ -126,6 +141,12 @@ impl AppConfig {
             ("Debug".to_string(), "debug".to_string())
         };
 
+        // RPATH defaults based on install_prefix
+        let default_lib_rpath = format!("{}/lib", install_prefix.display());
+        let rocm_exe_rpath = args.rocm_exe_rpath.unwrap_or_else(|| default_lib_rpath.clone());
+        let rocm_lib_rpath = args.rocm_lib_rpath.unwrap_or_else(|| default_lib_rpath.clone());
+        let rocm_asan_lib_rpath = args.rocm_asan_lib_rpath.unwrap_or_else(|| format!("{}/lib/asan", install_prefix.display()));
+
         Ok(AppConfig {
             source_root,
             install_prefix,
@@ -143,6 +164,9 @@ impl AppConfig {
             gpu_list_cmake: args.gpu_list.map(|gpus| format!("-DGPU_LIST={}", gpus)),
             jobs: args.jobs,
             package_type_to_copy: args.package_type.to_lowercase(),
+            rocm_exe_rpath,
+            rocm_lib_rpath,
+            rocm_asan_lib_rpath,
             verbose: args.verbose,
         })
     }
@@ -192,13 +216,80 @@ fn handle_clean(config: &AppConfig) -> Result<()> {
     Ok(())
 }
 
-fn get_rocm_cmake_params(_config: &AppConfig) -> Vec<String> {
-    Vec::new()
+fn get_rocm_cmake_params(config: &AppConfig) -> Vec<String> {
+    let mut params: Vec<String> = Vec::new();
+    let prefix_path_str = format!("{}/llvm;{}", 
+                                   config.install_prefix.display(), 
+                                   config.install_prefix.display());
+    params.push(format!("-DCMAKE_PREFIX_PATH={}", prefix_path_str));
+    params.push(format!("-DCMAKE_BUILD_TYPE={}", config.build_type_cmake));
+    params.push("-DCMAKE_VERBOSE_MAKEFILE=1".to_string());
+    let cpack_generator = "DEB;RPM"; 
+    params.push(format!("-DCPACK_GENERATOR={}", cpack_generator));
+    params.push("-DCMAKE_INSTALL_RPATH_USE_LINK_PATH=FALSE".to_string());
+    params.push(format!("-DROCM_PATCH_VERSION={}", config.rocm_libpatch_version));
+    params.push(format!("-DCMAKE_INSTALL_PREFIX={}", config.install_prefix.display()));
+    params.push(format!("-DCPACK_PACKAGING_INSTALL_PREFIX={}", config.install_prefix.display()));
+    if config.verbose {
+        println!("get_rocm_cmake_params generated: {:?}", params);
+    }
+    params
 }
 
-fn get_rocm_common_cmake_params(_config: &AppConfig) -> Vec<String> {
-    Vec::new()
+// Helper for get_rocm_common_cmake_params
+fn get_cmake_path_internal(rocm_install_path: &Path, asan_enabled: bool) -> PathBuf {
+    let mut cmake_path_suffix = PathBuf::from("lib").join("cmake");
+    if asan_enabled {
+        // as per compute_utils.sh: getCmakePath()
+        cmake_path_suffix = PathBuf::from("lib").join("asan").join("cmake");
+    }
+    rocm_install_path.join(cmake_path_suffix)
 }
+
+fn get_rocm_common_cmake_params(config: &AppConfig) -> Vec<String> {
+    let mut params: Vec<String> = Vec::new();
+
+    // Conditional CPack debug flags
+    if config.build_type_cmake == "RelWithDebInfo" { // Original script uses BUILD_TYPE for this, which maps to CMAKE_BUILD_TYPE
+        params.push("-DCPACK_RPM_DEBUGINFO_PACKAGE=TRUE".to_string());
+        params.push("-DCPACK_DEBIAN_DEBUGINFO_PACKAGE=TRUE".to_string());
+        params.push("-DCPACK_RPM_INSTALL_WITH_EXEC=TRUE".to_string());
+    }
+
+    // General ROCm Parameters
+    params.push("-DROCM_DEP_ROCMCORE=ON".to_string()); // Assuming this is always ON for rocminfo
+    params.push(format!("-DCMAKE_EXE_LINKER_FLAGS_INIT=-Wl,--enable-new-dtags,--build-id=sha1,--rpath,{}", config.rocm_exe_rpath));
+    params.push(format!("-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--enable-new-dtags,--build-id=sha1,--rpath,{}", config.rocm_lib_rpath));
+    params.push("-DFILE_REORG_BACKWARD_COMPATIBILITY=OFF".to_string());
+    params.push("-DCPACK_RPM_PACKAGE_RELOCATABLE=ON".to_string());
+    params.push("-DCPACK_SET_DESTDIR=OFF".to_string()); 
+    params.push("-DINCLUDE_PATH_COMPATIBILITY=OFF".to_string());
+
+    // ASan Specific Parameters
+    if config.address_sanitizer_enabled {
+        let asan_lib_dir = "lib/asan"; 
+        let cmake_path_for_asan = get_cmake_path_internal(&config.install_prefix, true);
+
+        params.push(format!("-DCMAKE_INSTALL_LIBDIR={}", asan_lib_dir));
+        
+        let asan_prefix_path_str = format!("{};{}/lib/asan;{}/llvm;{}",
+                                           cmake_path_for_asan.display(),
+                                           config.install_prefix.display(),
+                                           config.install_prefix.display(),
+                                           config.install_prefix.display());
+        params.push(format!("-DCMAKE_PREFIX_PATH={}", asan_prefix_path_str));
+        params.push("-DENABLE_ASAN_PACKAGING=true".to_string()); 
+        params.push(format!("-DCMAKE_SHARED_LINKER_FLAGS_INIT=-Wl,--enable-new-dtags,--build-id=sha1,--rpath,{}", config.rocm_asan_lib_rpath));
+    } else {
+        params.push("-DCMAKE_INSTALL_LIBDIR=lib".to_string());
+    }
+
+    if config.verbose {
+        println!("get_rocm_common_cmake_params generated: {:?}", params);
+    }
+    params
+}
+
 
 fn copy_packages(config: &AppConfig) -> Result<()> {
     if config.verbose {
@@ -278,11 +369,26 @@ fn handle_build(config: &AppConfig) -> Result<()> {
     let mut cmake_configure_cmd = Command::new(&cmake_exe);
     cmake_configure_cmd.current_dir(&config.build_dir);
     cmake_configure_cmd.arg(&config.source_root); 
-    cmake_configure_cmd.args(get_rocm_cmake_params(config));
-    cmake_configure_cmd.args(get_rocm_common_cmake_params(config));
-    cmake_configure_cmd.arg(format!("-DCMAKE_BUILD_TYPE={}", config.build_type_cmake));
+    
+    let rocm_params = get_rocm_cmake_params(config);
+    if !rocm_params.is_empty() {
+        if config.verbose {
+            println!("Adding rocm_cmake_params: {:?}", rocm_params);
+        }
+        cmake_configure_cmd.args(rocm_params);
+    }
+    
+    let common_params = get_rocm_common_cmake_params(config);
+    if !common_params.is_empty() {
+        if config.verbose {
+            println!("Adding rocm_common_cmake_params: {:?}", common_params);
+        }
+        cmake_configure_cmd.args(common_params);
+    }
+    
+    // These are more specific and should ideally be set after the general ones
+    // to ensure they take precedence if there are overlaps (though less likely for these).
     cmake_configure_cmd.arg(format!("-DBUILD_SHARED_LIBS={}", config.build_shared_libs_cmake));
-    cmake_configure_cmd.arg(format!("-DCMAKE_INSTALL_PREFIX={}", config.install_prefix.display()));
     cmake_configure_cmd.arg(format!("-DROCRTST_BLD_TYPE={}", config.rocrts_bld_type_cmake));
     cmake_configure_cmd.arg("-DCPACK_PACKAGE_VERSION_MAJOR=1"); 
     cmake_configure_cmd.arg(format!("-DCPACK_PACKAGE_VERSION_MINOR={}", config.rocm_libpatch_version));
@@ -295,17 +401,12 @@ fn handle_build(config: &AppConfig) -> Result<()> {
         if config.verbose {
             println!("Address sanitizer enabled. Setting CMake flag. Environment variable setup for ASan runtime (e.g., ASAN_OPTIONS) is pending full details from compute_utils.sh:set_asan_env_vars.");
         }
-        cmake_configure_cmd.arg("-DENABLE_ADDRESS_SANITIZER=ON"); // Assumed CMake flag for compilation
-
+        cmake_configure_cmd.arg("-DENABLE_ADDRESS_SANITIZER=ON"); 
         // TODO: Replicate compute_utils.sh:set_asan_env_vars if needed for child processes (e.g., CTest).
-        // This would involve using cmake_configure_cmd.env("ASAN_OPTIONS", "value") and for other commands too if they run tests.
-        // For example:
-        // cmake_configure_cmd.env("ASAN_OPTIONS", "detect_leaks=0:detect_stack_use_after_return=1");
-        // cmake_build_cmd.env("ASAN_OPTIONS", "detect_leaks=0:detect_stack_use_after_return=1"); // If CTest runs here
     }
     
     if config.verbose {
-        println!("CMake configure command: {:?}", cmake_configure_cmd);
+        println!("Final CMake configure command: {:?}", cmake_configure_cmd);
     }
     let configure_output = cmake_configure_cmd.output().with_context(|| "Failed to execute CMake configure command")?;
     if !configure_output.status.success() {
@@ -402,10 +503,6 @@ fn handle_build(config: &AppConfig) -> Result<()> {
         if config.verbose {
             println!("Wheel package creation requested for rocminfo.");
         }
-        // The original script calls build_wheel "$ROCMINFO_BUILD_DIR" "$PROJ_NAME".
-        // This implies setup.py might be in ROCMINFO_SRC_ROOT or build_wheel handles paths.
-        // We'll assume setup.py is in config.source_root.
-
         let python_exe = which("python3").or_else(|_| which("python"))
             .map_err(|e| anyhow::anyhow!("python3 or python executable not found in PATH for wheel build: {}", e))?;
         
@@ -416,19 +513,13 @@ fn handle_build(config: &AppConfig) -> Result<()> {
 
         let setup_py_path = config.source_root.join("setup.py");
         if !setup_py_path.exists() {
-            // It's possible rocminfo doesn't have a setup.py.
-            // The original script's build_wheel might handle this.
-            // For now, we'll print a warning if verbose, or just skip.
             if config.verbose {
                 println!("Warning: setup.py not found at {:?}. Skipping wheel build.", setup_py_path);
             }
-            // Assuming it's not a fatal error if setup.py is missing for rocminfo
         } else {
             let mut wheel_cmd = Command::new(python_exe);
-            wheel_cmd.current_dir(&config.source_root); // Run setup.py from its location
+            wheel_cmd.current_dir(&config.source_root);
             wheel_cmd.arg("setup.py").arg("bdist_wheel");
-
-            // Define wheel output directory
             let wheel_dist_dir = config.build_dir.join("wheelhouse");
             fs::create_dir_all(&wheel_dist_dir)
                 .with_context(|| format!("Failed to create directory for wheel output: {:?}", wheel_dist_dir))?;
@@ -437,22 +528,18 @@ fn handle_build(config: &AppConfig) -> Result<()> {
             if config.verbose {
                 println!("Executing wheel command: {:?}", wheel_cmd);
             }
-
             let wheel_output = wheel_cmd.output()
                 .with_context(|| format!("Failed to execute python setup.py bdist_wheel. Ensure python and setuptools are installed and setup.py exists at {:?}", config.source_root))?;
-            
             if !wheel_output.status.success() {
                 return Err(anyhow::anyhow!(
                     "Python wheel command failed with status: {}.\nStderr:\n{}\nStdout:\n{}",
                     wheel_output.status, String::from_utf8_lossy(&wheel_output.stderr), String::from_utf8_lossy(&wheel_output.stdout)
                 ));
             }
-
             if config.verbose {
                 print!("Python wheel command stdout:\n{}", String::from_utf8_lossy(&wheel_output.stdout));
                 if !wheel_output.stderr.is_empty() { eprintln!("Python wheel command stderr:\n{}", String::from_utf8_lossy(&wheel_output.stderr)); }
                 println!("Python wheel(s) for rocminfo created successfully in {:?}", wheel_dist_dir);
-                // TODO: Original script's build_wheel might copy this to a final package location.
             }
         }
     }
@@ -461,7 +548,6 @@ fn handle_build(config: &AppConfig) -> Result<()> {
     Ok(())
 }
 
-// New handle_outdir function
 fn handle_outdir(config: &AppConfig, pkg_to_print: &str) -> Result<()> {
     if config.verbose {
         println!("Outdir action selected for package type: {}", pkg_to_print);
@@ -487,7 +573,6 @@ fn main() -> Result<()> {
         println!("Raw CLI arguments: {:#?}", &cli_args); 
     }
     
-    // Handle --outdir-target action first, as it's an informational command that exits.
     if let Some(ref pkg_to_print) = cli_args.outdir_target {
         let temp_cli_args_for_outdir = cli_args.clone(); 
         let config_for_outdir = AppConfig::try_from_args(temp_cli_args_for_outdir)?;
@@ -519,10 +604,9 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*; // Import items from the parent module (main.rs)
-    use std::fs as std_fs; // Renamed to avoid conflict with the module name if main.rs is in a directory named 'fs'
+    use super::*; 
+    use std::fs as std_fs; 
 
-    // Helper to create a basic CliArgs for testing AppConfig
     fn basic_cli_args(source_root_path: PathBuf) -> CliArgs {
         CliArgs {
             source_root: source_root_path,
@@ -533,12 +617,15 @@ mod tests {
             clean: false,
             release: false,
             static_libs: false,
-            address_sanitizer: false, // Corrected field name
+            address_sanitizer: false, 
             wheel: false,
             gpu_list: None,
             jobs: None,
-            package_type: "all".to_string(), // Added this field
+            package_type: "all".to_string(), 
             outdir_target: None,
+            rocm_exe_rpath: None, // Added for tests
+            rocm_lib_rpath: None, // Added for tests
+            rocm_asan_lib_rpath: None, // Added for tests
             verbose: false,
         }
     }
@@ -546,13 +633,10 @@ mod tests {
     #[test]
     fn test_app_config_defaults() {
         let temp_dir = std::env::temp_dir();
-        let dummy_source_root = temp_dir.join("test_rocminfo_source_defaults");
+        let dummy_source_root = temp_dir.join("test_rocminfo_source_defaults_full"); // New name to avoid conflict
         std_fs::create_dir_all(&dummy_source_root).unwrap();
 
-        let mut cli_args = basic_cli_args(dummy_source_root.clone());
-        // Field name is 'address_sanitizer' in CliArgs
-        cli_args.address_sanitizer = false; 
-
+        let cli_args = basic_cli_args(dummy_source_root.clone());
         let config_result = AppConfig::try_from_args(cli_args);
         assert!(config_result.is_ok());
         if let Ok(config) = config_result {
@@ -560,74 +644,41 @@ mod tests {
             assert_eq!(config.build_dir, dummy_source_root.join("build").join("rocminfo-builder"));
             let expected_package_root = dummy_source_root.join("dist");
             assert_eq!(config.package_root, expected_package_root);
-            assert_eq!(config.install_prefix, expected_package_root.join("rocm"));
+            let expected_install_prefix = expected_package_root.join("rocm");
+            assert_eq!(config.install_prefix, expected_install_prefix);
             assert_eq!(config.deb_package_dir, expected_package_root.join("deb").join("rocminfo"));
             assert_eq!(config.rpm_package_dir, expected_package_root.join("rpm").join("rocminfo"));
             assert_eq!(config.build_type_cmake, "Debug");
             assert_eq!(config.rocrts_bld_type_cmake, "debug");
             assert_eq!(config.build_shared_libs_cmake, "ON");
             assert!(!config.address_sanitizer_enabled);
+            // Check RPATH defaults
+            let default_lib_rpath = format!("{}/lib", expected_install_prefix.display());
+            assert_eq!(config.rocm_exe_rpath, default_lib_rpath);
+            assert_eq!(config.rocm_lib_rpath, default_lib_rpath);
+            assert_eq!(config.rocm_asan_lib_rpath, format!("{}/lib/asan", expected_install_prefix.display()));
         }
         
-        std_fs::remove_dir_all(&dummy_source_root).unwrap(); // Clean up
+        std_fs::remove_dir_all(&dummy_source_root).unwrap();
     }
 
     #[test]
-    fn test_app_config_release_flag() {
+    fn test_app_config_custom_rpaths() {
         let temp_dir = std::env::temp_dir();
-        let dummy_source_root = temp_dir.join("test_rocminfo_source_release");
-        std_fs::create_dir_all(&dummy_source_root).unwrap();
-        
-        let mut cli_args = basic_cli_args(dummy_source_root.clone());
-        cli_args.release = true;
-        cli_args.address_sanitizer = false; 
-
-        let config = AppConfig::try_from_args(cli_args).unwrap();
-        assert_eq!(config.build_type_cmake, "RelWithDebInfo");
-        assert_eq!(config.rocrts_bld_type_cmake, "rel");
-        
-        std_fs::remove_dir_all(&dummy_source_root).unwrap(); // Clean up
-    }
-
-    #[test]
-    fn test_app_config_static_libs_flag() {
-        let temp_dir = std::env::temp_dir();
-        let dummy_source_root = temp_dir.join("test_rocminfo_source_static");
+        let dummy_source_root = temp_dir.join("test_rocminfo_source_custom_rpaths");
         std_fs::create_dir_all(&dummy_source_root).unwrap();
 
         let mut cli_args = basic_cli_args(dummy_source_root.clone());
-        cli_args.static_libs = true;
-        cli_args.address_sanitizer = false;
+        cli_args.rocm_exe_rpath = Some("/custom/exe/rpath".to_string());
+        cli_args.rocm_lib_rpath = Some("/custom/lib/rpath".to_string());
+        cli_args.rocm_asan_lib_rpath = Some("/custom/asan/rpath".to_string());
 
         let config = AppConfig::try_from_args(cli_args).unwrap();
-        assert_eq!(config.build_shared_libs_cmake, "OFF");
-
-        std_fs::remove_dir_all(&dummy_source_root).unwrap(); // Clean up
-    }
-    
-    #[test]
-    fn test_app_config_custom_paths() {
-        let temp_dir = std::env::temp_dir();
-        let dummy_source_root = temp_dir.join("test_rocminfo_source_custom");
-        let custom_build_dir = temp_dir.join("custom_build");
-        let custom_package_root = temp_dir.join("custom_dist");
-        let custom_install_prefix = temp_dir.join("custom_install");
-
-        std_fs::create_dir_all(&dummy_source_root).unwrap();
-        // No need to create custom_build_dir, custom_package_root, custom_install_prefix for AppConfig test itself
-
-        let mut cli_args = basic_cli_args(dummy_source_root.clone());
-        cli_args.build_dir = Some(custom_build_dir.clone());
-        cli_args.package_root = Some(custom_package_root.clone());
-        cli_args.install_prefix = Some(custom_install_prefix.clone());
-        cli_args.address_sanitizer = false; 
-
-        let config = AppConfig::try_from_args(cli_args).unwrap();
-        assert_eq!(config.build_dir, custom_build_dir);
-        assert_eq!(config.package_root, custom_package_root);
-        assert_eq!(config.install_prefix, custom_install_prefix);
+        assert_eq!(config.rocm_exe_rpath, "/custom/exe/rpath");
+        assert_eq!(config.rocm_lib_rpath, "/custom/lib/rpath");
+        assert_eq!(config.rocm_asan_lib_rpath, "/custom/asan/rpath");
         
-        std_fs::remove_dir_all(&dummy_source_root).unwrap(); // Clean up
+        std_fs::remove_dir_all(&dummy_source_root).unwrap();
     }
 }
 ```
