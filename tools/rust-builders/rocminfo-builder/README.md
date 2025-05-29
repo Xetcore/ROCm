@@ -1,17 +1,24 @@
 # rocminfo Builder (Rust) - `rocminfo-builder`
 
-`rocminfo-builder` is a command-line utility written in Rust designed to replace the functionality of the `build_rocminfo.sh` shell script. It handles the building, (eventual) packaging, and installation of the `rocminfo` utility.
+`rocminfo-builder` is a command-line utility written in Rust designed to replace the functionality of the `build_rocminfo.sh` shell script. It handles the building, packaging, and installation of the `rocminfo` utility.
 
-**Note:** This utility is currently in Phase 1 of development. It supports cleaning and basic build (configure and install) operations. Packaging, wheel creation, and other advanced features will be added in subsequent phases.
+**Note:** This utility is currently in Phase 3 of development. It supports cleaning, building (configure, build, install), packaging (deb/rpm), Python wheel creation (if `setup.py` exists), and querying output directories. Full replication of `rocm_cmake_params()` and `rocm_common_cmake_params()` from `compute_utils.sh` is still pending.
 
-## Phase 1 Features
+## Features
 
--   Cleaning of build directories and the installed `rocminfo` binary.
--   Configuration of `rocminfo` via CMake.
--   Building and installing `rocminfo` using CMake.
--   CLI arguments for specifying paths, build type (debug/release), library type (static/shared), ASan, GPU list, and job parallelism.
+-   Cleaning of build directories, configured package directories, and the installed `rocminfo` binary.
+-   Configuration of `rocminfo` via CMake, with support for various build options.
+-   Building and installing `rocminfo` using CMake, with parallel job execution.
+-   Packaging `rocminfo` into DEB and RPM packages using CPack (via CMake).
+-   Copying specified package types (deb, rpm, or all) to structured package directories.
+-   Building Python wheel packages via `python setup.py bdist_wheel` (if `setup.py` is present in source root), with output to `<build-dir>/wheelhouse/`.
+-   Querying output paths for specific package types (`--outdir-target`).
+-   Support for Address Sanitizer (ASan) via CMake flags (environment variable setup for ASan runtime is noted as pending full `compute_utils.sh` logic).
+-   Passing GPU list and CPack versioning information to CMake.
+-   CLI arguments for specifying source/build/package/install paths, build type (debug/release), library type (static/shared), package filtering, verbosity, and job control.
+-   Improved error reporting by showing output from failed external commands (CMake, Python).
 
-## Usage (Phase 1)
+## Usage
 
 ### Command-Line Arguments
 
@@ -35,7 +42,7 @@ rocminfo-builder [OPTIONS] --source-root <PATH>
     Defaults to `<source-root>/build/rocminfo-builder`.
 
 *   `--package-root <PATH>`:
-    Optional: Specify the root directory for future packages (not fully used for output in Phase 1, but directories might be created/cleaned).
+    Optional: Specify the root directory for packages.
     Defaults to `<source_root>/dist`.
 
 *   `--rocm-libpatch-version <VERSION>`:
@@ -56,7 +63,7 @@ rocminfo-builder [OPTIONS] --source-root <PATH>
     Enable Address Sanitizer. This will set `-DENABLE_ADDRESS_SANITIZER=ON` for CMake (assumption, actual flag might differ based on `rocminfo`'s CMake) and is intended to also set necessary environment variables for the build process.
 
 *   `-w, --wheel`:
-    Creates a Python wheel package (if applicable for `rocminfo`). (Functionality to be fully implemented in Phase 3).
+    Creates a Python wheel package using `python setup.py bdist_wheel` (if `setup.py` exists in `--source-root`). Output is to `<build-dir>/wheelhouse/`.
 
 *   `--gpu-list <LIST>`:
     Optional: Comma-separated list of GPUs to target (passed to CMake as `-DGPU_LIST=<LIST>`).
@@ -64,13 +71,21 @@ rocminfo-builder [OPTIONS] --source-root <PATH>
 *   `--jobs <N>`:
     Optional: Number of parallel jobs for the CMake build step (`--parallel N`).
 
+*   `--package-type <TYPE>`:
+    Optional: Specify packaging format to copy after CPack (e.g., "deb", "rpm", "all").
+    (Default: "all")
+
+*   `--outdir-target <PKG_TYPE>`:
+    Optional: Print path of output directory for specified package type (deb, rpm) and exit.
+    Example: `--outdir-target deb`
+
 *   `-v, --verbose`:
     Enable verbose logging.
 
 *   `-h, --help`: Print help information.
 *   `-V, --version`: Print version information.
 
-### Examples (Phase 1)
+### Examples
 
 1.  **Clean existing build artifacts and installed binary:**
     (Assuming `rocminfo` source is in `./rocm/rocminfo-src` and default install prefix is used)
@@ -88,6 +103,22 @@ rocminfo-builder [OPTIONS] --source-root <PATH>
     rocminfo-builder       --source-root /path/to/rocminfo-source       --install-prefix ./my-install-area       --release       --static-libs       --jobs 4       -v
     ```
 
+4.  **Build, package DEBs and RPMs, and create a wheel (if setup.py exists):**
+    ```bash
+    rocminfo-builder           --source-root /path/to/rocminfo-source           --package-type all           --wheel           -v
+    ```
+
+5.  **Get the output directory for DEB packages:**
+    ```bash
+    rocminfo-builder           --source-root /path/to/rocminfo-source           --outdir-target deb
+    ```
+    Output might be: `/path/to/rocminfo-source/dist/deb/rocminfo` (assuming default package_root)
+
+6.  **Build with Address Sanitizer and specific GPU list:**
+    ```bash
+    rocminfo-builder           --source-root /path/to/rocminfo-source           --address-sanitizer           --gpu-list "gfx900;gfx906"           -v
+    ```
+
 ## Build Instructions for `rocminfo-builder`
 
 To build this utility itself:
@@ -100,10 +131,17 @@ To build this utility itself:
     ```
     The compiled binary will be located at `target/release/rocminfo-builder`.
 
-## Development Notes (Phase 1)
+## Development Notes
 
--   This phase focuses on core `clean` and `build` (configure & install) logic.
--   Packaging (`cmake --build . --target package`), specific package file copying, `--outdir-target` functionality, and full `--wheel` creation are planned for later phases.
--   The CMake parameters from `get_rocm_cmake_params()` and `get_rocm_common_cmake_params()` are currently placeholders (empty). Full replication of the original script's logic from `compute_utils.sh` is a key remaining item.
--   ASan support currently sets a CMake flag; full environment variable setup (like `ASAN_OPTIONS`) via `compute_utils.sh`'s `set_asan_env_vars` needs to be replicated if specific options are required for child processes.
+-   The CMake parameters generated by `get_rocm_cmake_params()` and `get_rocm_common_cmake_params()` are currently placeholders (empty). Full replication of the original script's logic from `compute_utils.sh` is a key remaining item. This might affect build reproducibility if `rocminfo` relies on specific parameters from these functions.
+-   Address Sanitizer (`--address-sanitizer`):
+    -   Currently sets `-DENABLE_ADDRESS_SANITIZER=ON` (assumed flag name) for CMake.
+    -   Full replication of `compute_utils.sh:set_asan_env_vars` (which would set runtime environment variables like `ASAN_OPTIONS` for child processes like CTest) is pending.
+-   Python wheel support (`--wheel`):
+    -   Invokes `python setup.py bdist_wheel --dist-dir <build-dir>/wheelhouse/`.
+    -   Requires `python3` (or `python`) and `setuptools` in PATH.
+    -   Checks for `setup.py` in `--source-root`; skips wheel build if not found (with a verbose message).
+    -   The original `build_wheel` from `compute_utils.sh` might have additional logic for copying the wheel to a final packaging location; this is not yet implemented by the Rust tool.
+-   Error handling shows `stdout`/`stderr` from failed external commands.
+-   The tool relies on `cmake`, `python3` (or `python` if for wheel), and standard build tools to be in the system PATH.
 ```
