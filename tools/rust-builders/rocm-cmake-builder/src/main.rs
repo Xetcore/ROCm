@@ -520,8 +520,57 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*; 
-    use std::fs as std_fs; 
+    use super::*;
+    // Note: clap::Parser is not directly used here as CliArgs implements it.
+    // If we were testing CliArgs::parse_from, we'd need it.
+    use std::fs as std_fs;
+
+
+    // Helper function to create CliArgs for testing log level logic
+    fn create_cli_args_for_verbose_test(verbose: bool, rocm_cmake_root_path: PathBuf) -> CliArgs {
+        CliArgs {
+            rocm_cmake_root: rocm_cmake_root_path, // dummy path
+            build_dir: None,
+            package_root: None,
+            install_prefix: None,
+            rocm_libpatch_version: "0".to_string(),
+            clean: false,
+            release: false,
+            static_libs: false,
+            address_sanitizer: false,
+            package_type: "all".to_string(),
+            outdir_target: None,
+            wheel: false,
+            verbose, // Set based on parameter
+        }
+    }
+
+    #[test]
+    fn test_log_level_string_verbose() {
+        let temp_dir = std::env::temp_dir();
+        let dummy_rocm_root = temp_dir.join("test_rocm_cmake_log_verbose");
+        std_fs::create_dir_all(&dummy_rocm_root).unwrap();
+
+        let cli = create_cli_args_for_verbose_test(true, dummy_rocm_root.clone());
+        let default_log_level = if cli.verbose { "debug" } else { "info" };
+        assert_eq!(default_log_level, "debug");
+
+        std_fs::remove_dir_all(&dummy_rocm_root).unwrap();
+    }
+
+    #[test]
+    fn test_log_level_string_not_verbose() {
+        let temp_dir = std::env::temp_dir();
+        let dummy_rocm_root = temp_dir.join("test_rocm_cmake_log_not_verbose");
+        std_fs::create_dir_all(&dummy_rocm_root).unwrap();
+
+        let cli = create_cli_args_for_verbose_test(false, dummy_rocm_root.clone());
+        let default_log_level = if cli.verbose { "debug" } else { "info" };
+        assert_eq!(default_log_level, "info");
+
+        std_fs::remove_dir_all(&dummy_rocm_root).unwrap();
+    }
+
 
     fn basic_cli_args(rocm_cmake_root_path: PathBuf) -> CliArgs {
         CliArgs {

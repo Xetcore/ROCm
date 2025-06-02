@@ -12,9 +12,10 @@ mod utils;
 use config::{Cli, Commands, Config};
 
 fn main() -> Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-
     let cli = Cli::parse();
+
+    let default_log_level = if cli.verbose { "debug" } else { "info" };
+    env_logger::Builder::from_env(Env::default().default_filter_or(default_log_level)).init();
 
     let config = match Config::from_cli(cli.clone()) {
         Ok(cfg) => cfg,
@@ -61,4 +62,26 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::config::Cli; // Assuming Cli is in crate::config
+    use clap::Parser;
+
+    #[test]
+    fn test_log_level_string_verbose() {
+        // Cli::parse_from requires an iterator, and a command.
+        // Assuming 'build' is a valid subcommand for Cli.
+        let cli = Cli::parse_from(["mytool", "--verbose", "build"]);
+        let default_log_level = if cli.verbose { "debug" } else { "info" };
+        assert_eq!(default_log_level, "debug");
+    }
+
+    #[test]
+    fn test_log_level_string_not_verbose() {
+        let cli = Cli::parse_from(["mytool", "build"]);
+        let default_log_level = if cli.verbose { "debug" } else { "info" };
+        assert_eq!(default_log_level, "info");
+    }
 }

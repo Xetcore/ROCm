@@ -12,7 +12,7 @@ fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -
     let mut cmake_cmd = Command::new("cmake");
     cmake_cmd.arg(format!("-S{}", cmake_source_dir.display()));
     cmake_cmd.arg(format!("-B{}", build_dir.display()));
-    cmake_cmd.arg(format!("-DCMAKE_BUILD_TYPE=Release")); // TODO: Make configurable
+    cmake_cmd.arg(format!("-DCMAKE_BUILD_TYPE={}", config.build_type));
 
     if let Some(install_dir) = &config.install_dir {
         cmake_cmd.arg(format!("-DCMAKE_INSTALL_PREFIX={}", install_dir.display()));
@@ -24,6 +24,9 @@ fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -
          cmake_cmd.arg(format!("-Drocm-cmake_DIR={}", config.rocm_cmake_path.join("build").display()));
     }
 
+    for arg in &config.cmake_args {
+        cmake_cmd.arg(arg);
+    }
 
     info!(
         "Configuring project: {} with build dir: {}",
@@ -35,10 +38,10 @@ fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -
     run_command(cmake_cmd, "CMake configuration")
 }
 
-fn run_cmake_build(build_dir: &Path) -> Result<()> {
+fn run_cmake_build(build_dir: &Path, config: &Config) -> Result<()> {
     let mut cmake_cmd = Command::new("cmake");
     cmake_cmd.arg("--build").arg(build_dir);
-    cmake_cmd.arg("--config").arg("Release"); // TODO: Make configurable
+    cmake_cmd.arg("--config").arg(&config.build_type);
     cmake_cmd.arg("--").arg("-j"); // Parallel build
 
     info!("Building project in: {}", build_dir.display());
@@ -46,10 +49,10 @@ fn run_cmake_build(build_dir: &Path) -> Result<()> {
     run_command(cmake_cmd, "CMake build")
 }
 
-fn run_cmake_install(build_dir: &Path) -> Result<()> {
+fn run_cmake_install(build_dir: &Path, config: &Config) -> Result<()> {
     let mut cmake_cmd = Command::new("cmake");
     cmake_cmd.arg("--install").arg(build_dir);
-    cmake_cmd.arg("--config").arg("Release"); // TODO: Make configurable
+    cmake_cmd.arg("--config").arg(&config.build_type);
 
     info!("Installing project from: {}", build_dir.display());
     debug!("CMake install command: {:?}", cmake_cmd);
@@ -71,7 +74,7 @@ pub fn run_build(config: &Config) -> Result<()> {
 
         run_cmake_configure(config, &config.rocm_cmake_path, &rocm_cmake_build_dir)
             .with_context(|| format!("CMake configuration failed for rocm-cmake at {}", config.rocm_cmake_path.display()))?;
-        run_cmake_build(&rocm_cmake_build_dir)
+        run_cmake_build(&rocm_cmake_build_dir, config)
             .with_context(|| format!("CMake build failed for rocm-cmake in {}", rocm_cmake_build_dir.display()))?;
         if config.install_dir.is_some() {
             // Install rocm-cmake to its own subdir within the main install_dir
@@ -79,7 +82,7 @@ pub fn run_build(config: &Config) -> Result<()> {
              if let Some(idir) = rocm_cmake_install_dir_specific {
                 let mut install_cmd = Command::new("cmake");
                 install_cmd.arg("--install").arg(&rocm_cmake_build_dir);
-                install_cmd.arg("--config").arg("Release");
+                install_cmd.arg("--config").arg(&config.build_type);
                 install_cmd.arg("--prefix").arg(idir); // Install rocm-cmake to its own folder
                 info!("Installing rocm-cmake to: {}", idir.display());
                 debug!("CMake install command for rocm-cmake: {:?}", install_cmd);
@@ -121,11 +124,11 @@ pub fn run_build(config: &Config) -> Result<()> {
 
         run_cmake_configure(config, &project_path, &project_build_dir)
             .with_context(|| format!("CMake configuration failed for {} at {}", project_name, project_path.display()))?;
-        run_cmake_build(&project_build_dir)
+        run_cmake_build(&project_build_dir, config)
             .with_context(|| format!("CMake build failed for {} in {}", project_name, project_build_dir.display()))?;
 
         if config.install_dir.is_some() {
-            run_cmake_install(&project_build_dir)
+            run_cmake_install(&project_build_dir, config)
                 .with_context(|| format!("CMake install failed for {} from {}", project_name, project_build_dir.display()))?;
         }
         info!("Successfully processed project: {}", project_name);

@@ -19,6 +19,12 @@ pub struct Cli {
     #[arg(long, default_value_t = false, help = "Enable verbose output")]
     pub verbose: bool,
 
+    #[arg(long, value_name = "TYPE", default_value = "Release", help = "CMake build type (e.g., Release, Debug)")]
+    pub build_type: String,
+
+    #[arg(long = "cmake-arg", value_name = "ARG", help = "Custom arguments to pass to CMake configure (e.g., -DVAR=VAL). Can be used multiple times.")]
+    pub cmake_args: Vec<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -43,6 +49,8 @@ pub struct Config {
     pub packages: Vec<String>,
     pub rocm_cmake_path: PathBuf,
     pub source_dir: PathBuf, // Root of the rocm-cmake checkout
+    pub build_type: String,
+    pub cmake_args: Vec<String>,
 }
 
 impl Config {
@@ -109,6 +117,8 @@ impl Config {
             packages: cli.packages,
             rocm_cmake_path,
             source_dir,
+            build_type: cli.build_type.clone(),
+            cmake_args: cli.cmake_args.clone(),
         })
     }
 
@@ -118,5 +128,158 @@ impl Config {
 
     pub fn get_package_install_dir(&self, package_name: &str) -> Option<PathBuf> {
         self.install_dir.as_ref().map(|idir| idir.join(package_name))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Cli, Config, Commands};
+    use clap::Parser;
+    use std::path::PathBuf;
+
+    // Helper function to create a dummy rocm-cmake directory for tests
+    // to prevent Config::from_cli from failing when it checks for this directory.
+    fn setup_dummy_rocm_cmake_dir() -> tempfile::TempDir {
+        let temp_dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp_dir.path().join("rocm-cmake")).unwrap();
+        // Change current directory to the temp_dir so that Config::from_cli can find rocm-cmake
+        // std::env::set_current_dir(temp_dir.path()).unwrap(); // This can cause issues with test parallelism
+        temp_dir
+    }
+
+
+    #[test]
+    fn test_default_build_type() {
+        let _dummy_dir_guard = setup_dummy_rocm_cmake_dir();
+        let current_dir_before_test = std::env::current_dir().unwrap();
+        std::env::set_current_dir(_dummy_dir_guard.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "build"]);
+        assert_eq!(cli.build_type, "Release");
+        let config = Config::from_cli(cli).unwrap();
+        assert_eq!(config.build_type, "Release");
+
+        std::env::set_current_dir(current_dir_before_test).unwrap();
+    }
+
+    #[test]
+    fn test_custom_build_type() {
+        let _dummy_dir_guard = setup_dummy_rocm_cmake_dir();
+        let current_dir_before_test = std::env::current_dir().unwrap();
+        std::env::set_current_dir(_dummy_dir_guard.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "--build-type", "Debug", "build"]);
+        assert_eq!(cli.build_type, "Debug");
+        let config = Config::from_cli(cli).unwrap();
+        assert_eq!(config.build_type, "Debug");
+
+        std::env::set_current_dir(current_dir_before_test).unwrap();
+    }
+
+    #[test]
+    fn test_no_cmake_args() {
+        let _dummy_dir_guard = setup_dummy_rocm_cmake_dir();
+        let current_dir_before_test = std::env::current_dir().unwrap();
+        std::env::set_current_dir(_dummy_dir_guard.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "build"]);
+        assert!(cli.cmake_args.is_empty());
+        let config = Config::from_cli(cli).unwrap();
+        assert!(config.cmake_args.is_empty());
+
+        std::env::set_current_dir(current_dir_before_test).unwrap();
+    }
+
+    #[test]
+    fn test_single_cmake_arg() {
+        let _dummy_dir_guard = setup_dummy_rocm_cmake_dir();
+        let current_dir_before_test = std::env::current_dir().unwrap();
+        std::env::set_current_dir(_dummy_dir_guard.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "--cmake-arg", "-DVAR1=VAL1", "build"]);
+        assert_eq!(cli.cmake_args, vec!["-DVAR1=VAL1"]);
+        let config = Config::from_cli(cli).unwrap();
+        assert_eq!(config.cmake_args, vec!["-DVAR1=VAL1"]);
+
+        std::env::set_current_dir(current_dir_before_test).unwrap();
+    }
+
+    #[test]
+    fn test_multiple_cmake_args() {
+        let _dummy_dir_guard = setup_dummy_rocm_cmake_dir();
+        let current_dir_before_test = std::env::current_dir().unwrap();
+        std::env::set_current_dir(_dummy_dir_guard.path()).unwrap();
+
+        let cli = Cli::parse_from([
+            "mytool",
+            "--cmake-arg",
+            "-DVAR1=VAL1",
+            "--cmake-arg",
+            "-DVAR2=VAL2",
+            "build",
+        ]);
+        assert_eq!(cli.cmake_args, vec!["-DVAR1=VAL1", "-DVAR2=VAL2"]);
+        let config = Config::from_cli(cli).unwrap();
+        assert_eq!(config.cmake_args, vec!["-DVAR1=VAL1", "-DVAR2=VAL2"]);
+
+        std::env::set_current_dir(current_dir_before_test).unwrap();
+    }
+
+    // Test that default build_dir is correctly handled by Config::from_cli
+    // and that the current directory for the test does not affect it if it's relative.
+    #[test]
+    fn test_default_build_dir_resolution() {
+        let original_current_dir = std::env::current_dir().unwrap();
+
+        let temp_project_root = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp_project_root.path().join("rocm-cmake")).unwrap();
+
+        // Change current dir to simulate running from project root
+        std::env::set_current_dir(temp_project_root.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "build"]); // Uses default "./build"
+        let config = Config::from_cli(cli).unwrap();
+
+        let expected_build_dir = temp_project_root.path().join("build");
+        assert_eq!(config.build_dir, expected_build_dir);
+
+        // Restore original current directory
+        std::env::set_current_dir(original_current_dir).unwrap();
+    }
+
+    // Test that an absolute build_dir is correctly handled.
+    #[test]
+    fn test_absolute_build_dir_resolution() {
+        let original_current_dir = std::env::current_dir().unwrap();
+        let temp_project_root = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp_project_root.path().join("rocm-cmake")).unwrap();
+        std::env::set_current_dir(temp_project_root.path()).unwrap();
+
+        let abs_build_dir_temp = tempfile::tempdir().unwrap();
+        let abs_build_path = abs_build_dir_temp.path().to_path_buf();
+
+        let cli = Cli::parse_from(["mytool", "--build-dir", abs_build_path.to_str().unwrap(), "build"]);
+        let config = Config::from_cli(cli).unwrap();
+
+        assert_eq!(config.build_dir, abs_build_path);
+
+        std::env::set_current_dir(original_current_dir).unwrap();
+    }
+
+     // Test that a relative build_dir is correctly handled and made absolute.
+    #[test]
+    fn test_relative_build_dir_resolution() {
+        let original_current_dir = std::env::current_dir().unwrap();
+        let temp_project_root = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(temp_project_root.path().join("rocm-cmake")).unwrap();
+        std::env::set_current_dir(temp_project_root.path()).unwrap();
+
+        let cli = Cli::parse_from(["mytool", "--build-dir", "my_custom_build", "build"]);
+        let config = Config::from_cli(cli).unwrap();
+
+        let expected_build_dir = temp_project_root.path().join("my_custom_build");
+        assert_eq!(config.build_dir, expected_build_dir);
+
+        std::env::set_current_dir(original_current_dir).unwrap();
     }
 }
