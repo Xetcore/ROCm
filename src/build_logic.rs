@@ -5,7 +5,7 @@ use std::process::Command;
 use std::fs;
 
 use crate::config::Config;
-use crate::utils::{run_command, find_cmake_projects, copy_if_selected, SelectedPurpose};
+use crate::utils::{run_command, find_cmake_projects, is_package_selected, SelectedPurpose};
 
 fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -> Result<()> {
     let cmake_source_dir = project_path;
@@ -42,7 +42,9 @@ fn run_cmake_build(build_dir: &Path, config: &Config) -> Result<()> {
     let mut cmake_cmd = Command::new("cmake");
     cmake_cmd.arg("--build").arg(build_dir);
     cmake_cmd.arg("--config").arg(&config.build_type);
-    cmake_cmd.arg("--").arg("-j"); // Parallel build
+    if let Some(job_count) = config.jobs {
+        cmake_cmd.arg("--parallel").arg(job_count.to_string());
+    }
 
     info!("Building project in: {}", build_dir.display());
     debug!("CMake build command: {:?}", cmake_cmd);
@@ -113,7 +115,7 @@ pub fn run_build(config: &Config) -> Result<()> {
     for project_path in projects {
         let project_name = project_path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
-        if !copy_if_selected(&config.packages, &project_name, SelectedPurpose::Build) {
+        if !is_package_selected(&config.packages, &project_name, SelectedPurpose::Build) {
             info!("Skipping project {} as it's not in the selected packages for build.", project_name);
             continue;
         }
