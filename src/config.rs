@@ -4,6 +4,7 @@ use log::{debug, info, warn};
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::env;
+use serde::Deserialize; // Added for config file parsing
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -70,6 +71,44 @@ const DEFAULT_PROJECT_SEARCH_DEPTH: usize = 1;
 impl Config {
     pub fn from_cli(cli: Cli) -> Result<Self> {
         let current_dir = std::env::current_dir().context("Failed to get current directory")?;
+
+        // --- Load Configuration File ---
+        const CONFIG_FILE_NAME: &str = ".rocm_build.toml";
+        let mut loaded_config_values: Option<AppConfigFile> = None;
+
+        let mut potential_config_paths: Vec<PathBuf> = Vec::new();
+        // 1. Current directory
+        potential_config_paths.push(current_dir.join(CONFIG_FILE_NAME));
+        // 2. User's home directory
+        if let Some(home_dir_path) = home::home_dir() {
+            potential_config_paths.push(home_dir_path.join(CONFIG_FILE_NAME));
+        } else {
+            debug!("Could not determine user's home directory. Skipping search for config file there.");
+        }
+
+        debug!("Searching for configuration file '{}' in potential locations: {:?}", CONFIG_FILE_NAME, potential_config_paths);
+        for config_path_candidate in potential_config_paths {
+            if config_path_candidate.exists() { // Check before calling load_config_file
+                match load_config_file(&config_path_candidate) {
+                    Ok(Some(parsed_config)) => {
+                        info!("Loaded configuration from: {}", config_path_candidate.display());
+                        loaded_config_values = Some(parsed_config);
+                        break;
+                    }
+                    Ok(None) => {
+                        // load_config_file handles its own logging for parse errors or empty file
+                    }
+                    Err(e) => {
+                        warn!("Unexpected error trying to load config file {}: {}. Continuing without it.", config_path_candidate.display(), e);
+                    }
+                }
+            }
+        }
+        if loaded_config_values.is_none() {
+            info!("No configuration file '{}' found or loaded from search paths.", CONFIG_FILE_NAME);
+        }
+
+        // --- End Load Configuration File ---
         
         let build_dir = if cli.build_dir.is_absolute() {
             cli.build_dir
@@ -89,50 +128,83 @@ impl Config {
             debug!("Resolved install directory: {}", idir.display());
         }
 
-        let mut rocm_cmake_path_resolved: Option<PathBuf> = None;
-        let mut source_dir_resolved: Option<PathBuf> = None;
+        // --- Resolve rocm_cmake_path and its parent (initial_source_dir_for_rocm_cmake) ---
+        // This order of precedence: Env Var -> Config File -> Search
+        let mut determined_rocm_cmake_path: Option<PathBuf> = None;
+        let mut initial_source_dir_for_rocm_cmake: Option<PathBuf> = None;
+        let mut how_rocm_cmake_path_determined = "search"; // Default assumption
 
+        // 1. Environment Variable
         const ROCM_CMAKE_ENV_VAR: &str = "ROCM_CMAKE_PATH";
         debug!("Checking for {} environment variable...", ROCM_CMAKE_ENV_VAR);
         if let Ok(env_path_str) = env::var(ROCM_CMAKE_ENV_VAR) {
             if !env_path_str.is_empty() {
                 let env_rcp = PathBuf::from(env_path_str);
                 if env_rcp.is_dir() && env_rcp.file_name().map_or(false, |name| name == "rocm-cmake") {
-                    info!("Using rocm-cmake from environment variable {}: {}", ROCM_CMAKE_ENV_VAR, env_rcp.display());
-                    if let Some(parent_dir) = env_rcp.parent() {
-                        rocm_cmake_path_resolved = Some(env_rcp);
-                        source_dir_resolved = Some(parent_dir.to_path_buf());
-                    } else {
-                        warn!("Could not determine parent directory of ROCM_CMAKE_PATH ('{}'). This is unusual. Treating the path itself as the source directory.", env_rcp.display());
-                        rocm_cmake_path_resolved = Some(env_rcp.clone());
-                        source_dir_resolved = Some(env_rcp);
+                    determined_rocm_cmake_path = Some(env_rcp.clone());
+                    initial_source_dir_for_rocm_cmake = env_rcp.parent().map(|p| p.to_path_buf());
+                    how_rocm_cmake_path_determined = "environment variable";
+                    if initial_source_dir_for_rocm_cmake.is_none() {
+                        warn!("Parent of ROCM_CMAKE_PATH ('{}') from env var could not be determined. Using path itself as source directory.", env_rcp.display());
+                        initial_source_dir_for_rocm_cmake = Some(env_rcp.clone());
                     }
                 } else {
-                    warn!("{} environment variable is set to '{}', but this is not a valid directory named 'rocm-cmake'. Falling back to directory search.", ROCM_CMAKE_ENV_VAR, env_rcp.display());
+                    warn!("{} environment variable is set to '{}', but this is not a valid 'rocm-cmake' directory. Ignoring.", ROCM_CMAKE_ENV_VAR, env_rcp.display());
                 }
             } else {
-                debug!("{} environment variable is set but empty. Falling back to directory search.", ROCM_CMAKE_ENV_VAR);
+                debug!("{} environment variable is set but empty. Ignoring.", ROCM_CMAKE_ENV_VAR);
             }
         } else {
-            debug!("{} environment variable not set. Using directory search.", ROCM_CMAKE_ENV_VAR);
+            debug!("{} environment variable not set.", ROCM_CMAKE_ENV_VAR);
         }
 
-        if rocm_cmake_path_resolved.is_none() {
+        // 2. Configuration File (only if not found by env var)
+        if determined_rocm_cmake_path.is_none() {
+            debug!("Checking for 'rocm_cmake_path' in loaded configuration file...");
+            if let Some(app_config) = &loaded_config_values {
+                if let Some(config_rcp_relative) = &app_config.rocm_cmake_path {
+                    let config_rcp = if config_rcp_relative.is_absolute() {
+                        config_rcp_relative.clone()
+                    } else {
+                        // Assuming relative paths in config are relative to current working directory.
+                        // This could be improved if the config file's actual path is stored and used as base.
+                        current_dir.join(config_rcp_relative)
+                    };
+
+                    info!("Found 'rocm_cmake_path: {}' in config file. Validating...", config_rcp.display());
+                    if config_rcp.is_dir() && config_rcp.file_name().map_or(false, |name| name == "rocm-cmake") {
+                        determined_rocm_cmake_path = Some(config_rcp.clone());
+                        initial_source_dir_for_rocm_cmake = config_rcp.parent().map(|p| p.to_path_buf());
+                        how_rocm_cmake_path_determined = "configuration file";
+                        if initial_source_dir_for_rocm_cmake.is_none() {
+                             warn!("Parent of 'rocm_cmake_path' ('{}') from config file could not be determined. Using path itself as source directory.", config_rcp.display());
+                             initial_source_dir_for_rocm_cmake = Some(config_rcp.clone());
+                        }
+                    } else {
+                        warn!("Path '{}' for 'rocm_cmake_path' from configuration file is not a valid 'rocm-cmake' directory. Ignoring.", config_rcp.display());
+                    }
+                } else {
+                    debug!("'rocm_cmake_path' not specified in loaded configuration file.");
+                }
+            } else {
+                debug!("No configuration file was loaded. Skipping check for 'rocm_cmake_path' in it.");
+            }
+        }
+
+        // 3. Directory Search (lowest precedence)
+        if determined_rocm_cmake_path.is_none() {
             debug!("Searching for 'rocm-cmake' directory starting from current directory and parents...");
+            how_rocm_cmake_path_determined = "directory search";
             let mut current_search_dir = current_dir.clone();
-            for i in 0..6 { // Check current directory and up to 5 parent levels
+            for i in 0..6 {
                 let potential_rcp = current_search_dir.join("rocm-cmake");
                 debug!("Checking for 'rocm-cmake' in: {}", current_search_dir.display());
                 if potential_rcp.is_dir() {
-                    info!("Found 'rocm-cmake' directory at: {}", potential_rcp.display());
-                    rocm_cmake_path_resolved = Some(potential_rcp);
-                    source_dir_resolved = Some(current_search_dir);
+                    determined_rocm_cmake_path = Some(potential_rcp);
+                    initial_source_dir_for_rocm_cmake = Some(current_search_dir);
                     break;
                 }
-                if i == 5 { // Max depth reached
-                    debug!("Reached max search depth for 'rocm-cmake'.");
-                    break;
-                }
+                if i == 5 { debug!("Reached max search depth for 'rocm-cmake'."); break; }
                 if let Some(parent) = current_search_dir.parent() {
                     current_search_dir = parent.to_path_buf();
                 } else {
@@ -142,13 +214,13 @@ impl Config {
             }
         }
 
-        let final_rocm_cmake_path = rocm_cmake_path_resolved.ok_or_else(||
-            anyhow!("'rocm-cmake' directory not found. Set the {} environment variable or run from a directory containing 'rocm-cmake', or one of its parent directories.", ROCM_CMAKE_ENV_VAR)
+        let final_rocm_cmake_path = determined_rocm_cmake_path.ok_or_else(||
+            anyhow!("'rocm-cmake' directory not found. Searched via environment variable ('{}'), config file ('{}'), and directory scan.", ROCM_CMAKE_ENV_VAR, CONFIG_FILE_NAME)
         )?;
-        // 'source_dir_resolved' here is the parent of rocm-cmake, which becomes the default if --source-dir is not used.
-        let rocm_cmake_parent_dir = source_dir_resolved.expect("source_dir_resolved (parent of rocm-cmake) should be set if rocm_cmake_path was resolved");
+        let rocm_cmake_parent_dir = initial_source_dir_for_rocm_cmake.expect("rocm_cmake_parent_dir should be set if final_rocm_cmake_path was resolved");
 
-        debug!("Using rocm-cmake path: {}", final_rocm_cmake_path.display());
+        info!("Resolved 'rocm-cmake' path to: {} (determined by {}).", final_rocm_cmake_path.display(), how_rocm_cmake_path_determined);
+
         // Determine final source_dirs for project searching
         let resolved_source_dirs: Vec<PathBuf>;
         if !cli.source_dirs.is_empty() {
@@ -201,6 +273,52 @@ impl Config {
 
     pub fn get_package_install_dir(&self, package_name: &str) -> Option<PathBuf> {
         self.install_dir.as_ref().map(|idir| idir.join(package_name))
+    }
+}
+
+// --- Config File Handling ---
+
+#[derive(Deserialize, Debug, Default, Clone)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AppConfigFile {
+    pub rocm_cmake_path: Option<PathBuf>,
+    // Example of other potential future fields:
+    // pub default_source_dirs: Option<Vec<PathBuf>>,
+    // pub default_build_type: Option<String>,
+}
+
+pub(crate) fn load_config_file(config_path: &Path) -> Result<Option<AppConfigFile>> {
+    if !config_path.exists() {
+        debug!("Configuration file not found at: {}", config_path.display());
+        return Ok(None);
+    }
+    if !config_path.is_file() {
+        warn!("Configuration path exists but is not a file: {}. Ignoring.", config_path.display());
+        return Ok(None);
+    }
+
+    debug!("Attempting to load configuration file from: {}", config_path.display());
+    match fs::read_to_string(config_path) {
+        Ok(content) => {
+            if content.trim().is_empty() {
+                debug!("Configuration file '{}' is empty. Proceeding as if no config values set.", config_path.display());
+                return Ok(Some(AppConfigFile::default())); // Treat empty file as empty config
+            }
+            match toml::from_str::<AppConfigFile>(&content) {
+                Ok(parsed_config) => {
+                    info!("Successfully loaded and parsed configuration from: {}", config_path.display());
+                    Ok(Some(parsed_config))
+                }
+                Err(e) => {
+                    warn!("Failed to parse TOML configuration from '{}': {}. Proceeding as if config file had no usable values.", config_path.display(), e);
+                    Ok(None) // Gracefully ignore parse errors, treat as if no config values found
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to read configuration file '{}': {}. Proceeding as if config file had no usable values.", config_path.display(), e);
+            Ok(None) // Gracefully ignore read errors
+        }
     }
 }
 
@@ -699,6 +817,151 @@ mod tests {
             assert_eq!(config.source_dirs.len(), 1);
             assert_eq!(config.source_dirs[0], non_existent_dir);
             // The run_build/run_clean logic will later skip this directory with a warning.
+        });
+    }
+
+    // --- Tests for rocm_cmake_path determination with Config File ---
+
+    // Helper to create a config file for tests
+    fn create_temp_config_file(dir: &Path, content: &str) -> PathBuf {
+        let config_path = dir.join(super::CONFIG_FILE_NAME); // Use const from outer scope
+        fs::write(&config_path, content).unwrap();
+        config_path
+    }
+
+    #[test]
+    fn test_rocm_path_env_over_config_over_search() {
+        run_env_test(|temp_path| {
+            // 1. Env var path (highest priority)
+            let env_parent = temp_path.join("env_ver_parent");
+            fs::create_dir_all(&env_parent).unwrap();
+            let env_rocm_cmake = env_parent.join("rocm-cmake");
+            fs::create_dir_all(&env_rocm_cmake).unwrap();
+            env::set_var("ROCM_CMAKE_PATH", env_rocm_cmake.to_str().unwrap());
+
+            // 2. Config file path
+            let config_parent = temp_path.join("config_ver_parent");
+            fs::create_dir_all(&config_parent).unwrap();
+            let config_rocm_cmake = config_parent.join("rocm-cmake");
+            fs::create_dir_all(&config_rocm_cmake).unwrap();
+            create_temp_config_file(temp_path, &format!("rocm_cmake_path = \"{}\"", config_rocm_cmake.display()));
+
+            // 3. Search path (lowest priority)
+            let search_parent = temp_path.join("search_ver_parent");
+            fs::create_dir_all(&search_parent).unwrap();
+            let search_rocm_cmake = search_parent.join("rocm-cmake");
+            fs::create_dir_all(&search_rocm_cmake).unwrap();
+            // To make this discoverable by search, we'd need to make `search_parent` the CWD,
+            // or make `temp_path` itself the parent of a `rocm-cmake` dir.
+            // For this test, `run_env_test` sets CWD to `temp_path`. So, create search_rocm_cmake directly in temp_path.
+            let direct_search_rocm_cmake = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&direct_search_rocm_cmake).unwrap();
+
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.rocm_cmake_path, env_rocm_cmake);
+            assert_eq!(config.source_dirs[0], env_parent);
+            env::remove_var("ROCM_CMAKE_PATH");
+        });
+    }
+
+    #[test]
+    fn test_rocm_path_config_over_search() {
+        run_env_test(|temp_path| {
+            env::remove_var("ROCM_CMAKE_PATH");
+
+            // 1. Config file path
+            let config_parent = temp_path.join("config_ver_parent");
+            fs::create_dir_all(&config_parent).unwrap();
+            let config_rocm_cmake = config_parent.join("rocm-cmake");
+            fs::create_dir_all(&config_rocm_cmake).unwrap();
+            create_temp_config_file(temp_path, &format!("rocm_cmake_path = \"{}\"", config_rocm_cmake.display()));
+
+            // 2. Search path (directly in temp_path, which is CWD)
+            let search_rocm_cmake = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&search_rocm_cmake).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.rocm_cmake_path, config_rocm_cmake);
+            assert_eq!(config.source_dirs[0], config_parent);
+        });
+    }
+
+    #[test]
+    fn test_rocm_path_search_fallback() {
+        run_env_test(|temp_path| {
+            env::remove_var("ROCM_CMAKE_PATH");
+            create_temp_config_file(temp_path, "# Empty config or no rocm_cmake_path key");
+
+            let search_rocm_cmake = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&search_rocm_cmake).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.rocm_cmake_path, search_rocm_cmake);
+            assert_eq!(config.source_dirs[0], temp_path.to_path_buf());
+        });
+    }
+
+    #[test]
+    fn test_rocm_path_config_invalid_path_falls_back_to_search() {
+        run_env_test(|temp_path| {
+            env::remove_var("ROCM_CMAKE_PATH");
+            let non_existent_path = temp_path.join("non_existent_rocm_cmake");
+            // Config file is created in temp_path (CWD for test)
+            create_temp_config_file(temp_path, &format!("rocm_cmake_path = \"{}\"", non_existent_path.display()));
+
+            let search_rocm_cmake = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&search_rocm_cmake).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.rocm_cmake_path, search_rocm_cmake);
+            assert_eq!(config.source_dirs[0], temp_path.to_path_buf());
+        });
+    }
+
+    #[test]
+    fn test_rocm_path_config_relative_path() {
+        run_env_test(|temp_path| { // CWD is temp_path
+            env::remove_var("ROCM_CMAKE_PATH");
+
+            let relative_rcm_path_str = "my/relative/rocm-cmake"; // Relative to CWD (temp_path)
+            let absolute_rcm_path = temp_path.join(relative_rcm_path_str);
+            fs::create_dir_all(&absolute_rcm_path).unwrap();
+
+            // Config file is created in temp_path (CWD)
+            create_temp_config_file(temp_path, &format!("rocm_cmake_path = \"{}\"", relative_rcm_path_str));
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.rocm_cmake_path, absolute_rcm_path);
+            assert_eq!(config.source_dirs[0], absolute_rcm_path.parent().unwrap().to_path_buf());
+        });
+    }
+
+    #[test]
+    fn test_rocm_path_not_found_any_method() {
+        run_env_test(|temp_path| {
+            env::remove_var("ROCM_CMAKE_PATH");
+            create_temp_config_file(temp_path, ""); // Empty config file
+
+            // No rocm-cmake directory created for search either
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config_result = Config::from_cli(cli);
+
+            assert!(config_result.is_err(), "Expected an error when rocm-cmake path is not found by any method");
+            if let Err(e) = config_result {
+                assert!(e.to_string().contains("'rocm-cmake' directory not found"));
+            }
         });
     }
 }
