@@ -29,6 +29,9 @@ pub struct Cli {
     #[arg(short, long, value_name = "COUNT", help = "Number of parallel jobs for CMake build. (e.g., 8)")]
     pub jobs: Option<usize>,
 
+    #[arg(long, value_name = "DEPTH", help = "Maximum depth to search for CMake projects relative to source_dir (0 for source_dir itself, 1 for immediate subdirs, etc.).")]
+    pub project_search_depth: Option<usize>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -56,7 +59,10 @@ pub struct Config {
     pub build_type: String,
     pub cmake_args: Vec<String>,
     pub jobs: Option<usize>,
+    pub project_search_depth: usize,
 }
+
+const DEFAULT_PROJECT_SEARCH_DEPTH: usize = 1;
 
 impl Config {
     pub fn from_cli(cli: Cli) -> Result<Self> {
@@ -141,6 +147,9 @@ impl Config {
         debug!("Determined source directory: {}", final_source_dir.display());
         debug!("Using rocm-cmake path: {}", final_rocm_cmake_path.display());
 
+        let resolved_project_search_depth = cli.project_search_depth.unwrap_or(DEFAULT_PROJECT_SEARCH_DEPTH);
+        debug!("Effective project search depth set to: {}", resolved_project_search_depth);
+
         fs::create_dir_all(&build_dir)
             .with_context(|| format!("Failed to create build directory: {}", build_dir.display()))?;
         if let Some(ref idir) = install_dir {
@@ -157,6 +166,7 @@ impl Config {
             build_type: cli.build_type.clone(),
             cmake_args: cli.cmake_args.clone(),
             jobs: cli.jobs,
+            project_search_depth: resolved_project_search_depth,
         })
     }
 
@@ -518,6 +528,34 @@ mod tests {
             if let Err(e) = config_result {
                  assert!(e.to_string().contains("'rocm-cmake' directory not found"));
             }
+        });
+    }
+
+    // --- Tests for Project Search Depth ---
+    #[test]
+    fn test_default_project_search_depth() {
+        run_env_test(|test_env_path| {
+            // Ensure rocm-cmake dir exists for Config::from_cli to pass basic checks
+            // run_env_test sets current_dir to test_env_path.
+            fs::create_dir_all(test_env_path.join("rocm-cmake")).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            assert_eq!(cli.project_search_depth, None); // Default is None in Cli
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            // DEFAULT_PROJECT_SEARCH_DEPTH is 1, defined in the outer scope.
+            assert_eq!(config.project_search_depth, super::DEFAULT_PROJECT_SEARCH_DEPTH);
+        });
+    }
+
+    #[test]
+    fn test_custom_project_search_depth() {
+        run_env_test(|test_env_path| {
+            fs::create_dir_all(test_env_path.join("rocm-cmake")).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "--project-search-depth", "3", "build"]);
+            assert_eq!(cli.project_search_depth, Some(3));
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.project_search_depth, 3);
         });
     }
 }
