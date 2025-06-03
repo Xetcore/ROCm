@@ -128,12 +128,12 @@ impl Config {
                     current_search_dir = parent.to_path_buf();
                 } else {
                     debug!("No more parent directories to search for 'rocm-cmake'.");
-                    break; 
+                    break;
                 }
             }
         }
 
-        let final_rocm_cmake_path = rocm_cmake_path_resolved.ok_or_else(|| 
+        let final_rocm_cmake_path = rocm_cmake_path_resolved.ok_or_else(||
             anyhow!("'rocm-cmake' directory not found. Set the {} environment variable or run from a directory containing 'rocm-cmake', or one of its parent directories.", ROCM_CMAKE_ENV_VAR)
         )?;
         let final_source_dir = source_dir_resolved.expect("source_dir should be set if rocm_cmake_path was resolved");
@@ -188,10 +188,10 @@ mod tests {
     where
         F: FnOnce(&Path), // Pass temp_path (root of test env) to the test function
     {
-        let _lock = ENV_TEST_LOCK.lock().unwrap(); 
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         let temp_dir = tempdir().unwrap();
         let original_current_dir = std::env::current_dir().unwrap();
-        
+
         // Set current directory to the root of the temp dir for the test
         std::env::set_current_dir(temp_dir.path()).unwrap();
 
@@ -206,7 +206,7 @@ mod tests {
         std::env::set_current_dir(original_current_dir).unwrap();
         // Note: Specific env vars set by tests should be unset within the test_fn itself.
     }
-    
+
     // This existing helper is fine for tests NOT manipulating global state like env vars
     // or needing very specific current_dir setups beyond what it provides.
     // For new tests, especially env var tests, run_env_test is preferred.
@@ -294,7 +294,7 @@ mod tests {
         assert_eq!(cli.cmake_args, vec!["-DVAR1=VAL1", "-DVAR2=VAL2"]);
         let config = Config::from_cli(cli).unwrap();
         assert_eq!(config.cmake_args, vec!["-DVAR1=VAL1", "-DVAR2=VAL2"]);
-        
+
         std::env::set_current_dir(current_dir_before_test).unwrap();
     }
 
@@ -303,16 +303,16 @@ mod tests {
     #[test]
     fn test_default_build_dir_resolution() {
         let original_current_dir = std::env::current_dir().unwrap();
-        
+
         let temp_project_root = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(temp_project_root.path().join("rocm-cmake")).unwrap();
-        
+
         // Change current dir to simulate running from project root
         std::env::set_current_dir(temp_project_root.path()).unwrap();
 
         let cli = Cli::parse_from(["mytool", "build"]); // Uses default "./build"
         let config = Config::from_cli(cli).unwrap();
-        
+
         let expected_build_dir = temp_project_root.path().join("build");
         assert_eq!(config.build_dir, expected_build_dir);
 
@@ -333,9 +333,9 @@ mod tests {
 
         let cli = Cli::parse_from(["mytool", "--build-dir", abs_build_path.to_str().unwrap(), "build"]);
         let config = Config::from_cli(cli).unwrap();
-        
+
         assert_eq!(config.build_dir, abs_build_path);
-        
+
         std::env::set_current_dir(original_current_dir).unwrap();
     }
 
@@ -348,10 +348,10 @@ mod tests {
 
         let cli = Cli::parse_from(["mytool", "--build-dir", "my_custom_build", "build"]);
         let config = Config::from_cli(cli).unwrap();
-        
+
         let expected_build_dir = temp_project_root.path().join("my_custom_build");
         assert_eq!(config.build_dir, expected_build_dir);
-        
+
         std::env::set_current_dir(original_current_dir).unwrap();
     }
 
@@ -399,7 +399,7 @@ mod tests {
             env::remove_var("ROCM_CMAKE_PATH");
         });
     }
-    
+
     #[test]
     fn test_rocm_cmake_path_from_env_invalid_name_falls_back() {
         run_env_test(|test_env_path| {
@@ -415,7 +415,7 @@ mod tests {
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             // Should ignore env var due to invalid name and use the discovered one
-            assert_eq!(config.rocm_cmake_path, discoverable_rocm_cmake); 
+            assert_eq!(config.rocm_cmake_path, discoverable_rocm_cmake);
             assert_eq!(config.source_dir, test_env_path);
 
             env::remove_var("ROCM_CMAKE_PATH");
@@ -434,7 +434,7 @@ mod tests {
             fs::create_dir_all(&discoverable_parent).unwrap();
             let discoverable_rocm_cmake = discoverable_parent.join("rocm-cmake");
             fs::create_dir_all(&discoverable_rocm_cmake).unwrap();
-            
+
             // We need to run from a dir that would allow fallback search to find the discoverable one.
             // Current dir is test_env_path. Fallback search will check test_env_path/rocm-cmake (which is a file)
             // then parents. Let's make the discoverable one in a child dir and run from there.
@@ -458,7 +458,7 @@ mod tests {
     #[test]
     fn test_rocm_cmake_path_search_current_dir() {
         run_env_test(|test_env_path| {
-            env::remove_var("ROCM_CMAKE_PATH"); 
+            env::remove_var("ROCM_CMAKE_PATH");
             let discoverable_rocm_cmake = test_env_path.join("rocm-cmake");
             fs::create_dir_all(&discoverable_rocm_cmake).unwrap();
 
@@ -474,7 +474,7 @@ mod tests {
     fn test_rocm_cmake_path_search_parent_dir() {
         run_env_test(|temp_path_root| { // This is the actual root for FS operations.
             env::remove_var("ROCM_CMAKE_PATH");
-            
+
             // rocm-cmake is in temp_path_root
             let parent_rocm_cmake = temp_path_root.join("rocm-cmake");
             fs::create_dir_all(&parent_rocm_cmake).unwrap();
@@ -482,7 +482,7 @@ mod tests {
             // Current directory for the test will be a subdirectory
             let current_subdir = temp_path_root.join("current_subdir");
             fs::create_dir_all(&current_subdir).unwrap();
-            
+
             // Temporarily change current_dir for this specific test logic
             let original_current_dir = std::env::current_dir().unwrap(); // Should be temp_path_root
             std::env::set_current_dir(&current_subdir).unwrap();
@@ -495,8 +495,8 @@ mod tests {
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             assert_eq!(config.rocm_cmake_path, parent_rocm_cmake);
-            assert_eq!(config.source_dir, temp_path_root); 
-            
+            assert_eq!(config.source_dir, temp_path_root);
+
             // Restore current_dir to what run_env_test expects for its cleanup
             std::env::set_current_dir(original_current_dir).unwrap();
         });
@@ -504,7 +504,7 @@ mod tests {
 
     #[test]
     fn test_rocm_cmake_path_not_found_returns_err() {
-        run_env_test(|_test_env_path| { 
+        run_env_test(|_test_env_path| {
             env::remove_var("ROCM_CMAKE_PATH");
             // No "rocm-cmake" directory created anywhere discoverable by default search.
             // Default search starts from current_dir (which is _test_env_path) and goes up.

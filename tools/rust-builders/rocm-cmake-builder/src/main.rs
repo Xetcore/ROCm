@@ -567,7 +567,7 @@ mod tests {
         let cli = create_cli_args_for_verbose_test(false, dummy_rocm_root.clone());
         let default_log_level = if cli.verbose { "debug" } else { "info" };
         assert_eq!(default_log_level, "info");
-        
+
         std_fs::remove_dir_all(&dummy_rocm_root).unwrap();
     }
 
