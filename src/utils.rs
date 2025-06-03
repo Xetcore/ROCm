@@ -99,7 +99,7 @@ pub enum SelectedPurpose {
 /// Checks if a package should be processed based on the user's selection.
 /// If `selected_packages` is empty, it means "all packages" are implicitly selected.
 /// Otherwise, only packages explicitly listed are selected.
-pub fn copy_if_selected(selected_packages: &[String], package_name: &str, purpose: SelectedPurpose) -> bool {
+pub fn is_package_selected(selected_packages: &[String], package_name: &str, purpose: SelectedPurpose) -> bool {
     if selected_packages.is_empty() {
         debug!("No specific packages selected for {:?}, processing all (including '{}').", purpose, package_name);
         return true; // No specific packages listed, so all are considered selected

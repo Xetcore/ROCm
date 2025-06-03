@@ -1,11 +1,13 @@
 use anyhow::{Context, Result, anyhow};
 use log::{info, warn, debug};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
+use std::env::{self, JoinPathsError}; // Modified to bring JoinPathsError into scope
+use std::ffi::OsString; // Added for OsString type
 
 use crate::config::Config;
-use crate::utils::{run_command, find_cmake_projects, copy_if_selected, SelectedPurpose};
+use crate::utils::{run_command, find_cmake_projects, is_package_selected, SelectedPurpose};
 
 fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -> Result<()> {
     let cmake_source_dir = project_path;
@@ -21,7 +23,34 @@ fn run_cmake_configure(config: &Config, project_path: &Path, build_dir: &Path) -
     // Add rocm-cmake path for other projects to find it
     // This assumes that rocm-cmake itself doesn't need this when being built.
     if project_path != config.rocm_cmake_path {
-         cmake_cmd.arg(format!("-Drocm-cmake_DIR={}", config.rocm_cmake_path.join("build").display()));
+        if let Some(rocm_cmake_install_path) = config.get_package_install_dir("rocm-cmake") {
+            if rocm_cmake_install_path.is_dir() {
+                debug!("Found rocm-cmake install path at: {}. Attempting to prepend to CMAKE_PREFIX_PATH for configuring {}.", rocm_cmake_install_path.display(), project_path.display());
+                match generate_updated_cmake_prefix_path(&rocm_cmake_install_path, env::var_os("CMAKE_PREFIX_PATH")) {
+                    Ok(new_cmake_prefix_path_osstring) => {
+                        cmake_cmd.env("CMAKE_PREFIX_PATH", new_cmake_prefix_path_osstring);
+                        // To log the path effectively, we'd ideally inspect cmake_cmd.get_envs(),
+                        // but let's assume generate_updated_cmake_prefix_path logs sufficiently.
+                        // The debug log from generate_updated_cmake_prefix_path shows the generated list.
+                        // For the command itself:
+                        if log::log_enabled!(log::Level::Debug) {
+                             if let Some(val) = cmake_cmd.get_envs().get("CMAKE_PREFIX_PATH") {
+                                debug!("For project '{}', CMAKE_PREFIX_PATH will be set to: {:?}", project_path.display(), val);
+                             } else {
+                                debug!("For project '{}', CMAKE_PREFIX_PATH was prepared but seems unset in command. This is unexpected.", project_path.display());
+                             }
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to construct new CMAKE_PREFIX_PATH for project '{}': {}. Project may not find rocm-cmake.", project_path.display(), e);
+                    }
+                }
+            } else {
+                warn!("Configured rocm-cmake install path '{}' does not exist or is not a directory. Project {} may not find rocm-cmake.", rocm_cmake_install_path.display(), project_path.display());
+            }
+        } else {
+            debug!("No specific rocm-cmake install directory configured (config.install_dir is None). Project {} will rely on global CMake paths to find rocm-cmake.", project_path.display());
+        }
     }
 
     for arg in &config.cmake_args {
@@ -42,7 +71,9 @@ fn run_cmake_build(build_dir: &Path, config: &Config) -> Result<()> {
     let mut cmake_cmd = Command::new("cmake");
     cmake_cmd.arg("--build").arg(build_dir);
     cmake_cmd.arg("--config").arg(&config.build_type);
-    cmake_cmd.arg("--").arg("-j"); // Parallel build
+    if let Some(job_count) = config.jobs {
+        cmake_cmd.arg("--parallel").arg(job_count.to_string());
+    }
 
     info!("Building project in: {}", build_dir.display());
     debug!("CMake build command: {:?}", cmake_cmd);
@@ -113,7 +144,7 @@ pub fn run_build(config: &Config) -> Result<()> {
     for project_path in projects {
         let project_name = project_path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
-        if !copy_if_selected(&config.packages, &project_name, SelectedPurpose::Build) {
+        if !is_package_selected(&config.packages, &project_name, SelectedPurpose::Build) {
             info!("Skipping project {} as it's not in the selected packages for build.", project_name);
             continue;
         }
@@ -140,4 +171,116 @@ pub fn run_build(config: &Config) -> Result<()> {
         info!("Build process completed.");
     }
     Ok(())
+}
+
+// Helper function to generate an updated CMAKE_PREFIX_PATH string
+pub(crate) fn generate_updated_cmake_prefix_path(
+    new_path_to_prepend: &PathBuf,
+    current_cmake_prefix_path_os: Option<OsString>,
+) -> Result<OsString, JoinPathsError> {
+    let mut paths: Vec<PathBuf> = current_cmake_prefix_path_os
+        .map(|val| env::split_paths(&val).collect())
+        .unwrap_or_else(Vec::new);
+
+    // Prepend new_path_to_prepend, ensuring no duplicates
+    if !paths.contains(new_path_to_prepend) {
+        paths.insert(0, new_path_to_prepend.clone());
+        debug!("Prepending '{}' to CMAKE_PREFIX_PATH.", new_path_to_prepend.display());
+    } else {
+        debug!("'{}' is already in CMAKE_PREFIX_PATH. No change needed to its position by this operation.", new_path_to_prepend.display());
+    }
+
+    let new_path_list = env::join_paths(paths.iter())?;
+    debug!("Generated new CMAKE_PREFIX_PATH list: {:?}", new_path_list);
+    Ok(new_path_list)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::generate_updated_cmake_prefix_path;
+    use std::env;
+    use std::ffi::OsString;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_generate_prefix_path_initial_none() {
+        let new_path = PathBuf::from("/opt/rocm-cmake");
+        let result = generate_updated_cmake_prefix_path(&new_path, None).unwrap();
+        assert_eq!(result, OsString::from("/opt/rocm-cmake"));
+    }
+
+    #[test]
+    fn test_generate_prefix_path_prepend_existing() {
+        let new_path = PathBuf::from("/opt/rocm-cmake");
+        let existing_paths_os = OsString::from("/usr/local");
+        let result = generate_updated_cmake_prefix_path(&new_path, Some(existing_paths_os.clone())).unwrap();
+
+        let expected_paths = vec![PathBuf::from("/opt/rocm-cmake"), PathBuf::from("/usr/local")];
+        let expected_os = env::join_paths(expected_paths).unwrap();
+        assert_eq!(result, expected_os);
+    }
+
+    #[test]
+    fn test_generate_prefix_path_prepend_multiple_existing() {
+        let new_path = PathBuf::from("/opt/rocm-cmake");
+        let existing_paths_vec = vec![PathBuf::from("/usr/local"), PathBuf::from("/opt/other")];
+        let existing_paths_os = env::join_paths(existing_paths_vec.iter()).unwrap();
+
+        let result = generate_updated_cmake_prefix_path(&new_path, Some(existing_paths_os.clone())).unwrap();
+
+        let expected_paths_vec = vec![
+            PathBuf::from("/opt/rocm-cmake"),
+            PathBuf::from("/usr/local"),
+            PathBuf::from("/opt/other"),
+        ];
+        let expected_os = env::join_paths(expected_paths_vec).unwrap();
+        assert_eq!(result, expected_os);
+    }
+
+    #[test]
+    fn test_generate_prefix_path_no_duplicate_prepend() {
+        let new_path = PathBuf::from("/opt/rocm-cmake");
+        let existing_paths_vec = vec![PathBuf::from("/usr/local"), PathBuf::from("/opt/rocm-cmake")];
+        let existing_paths_os = env::join_paths(existing_paths_vec.iter()).unwrap();
+
+        let result = generate_updated_cmake_prefix_path(&new_path, Some(existing_paths_os.clone())).unwrap();
+
+        // If new_path is already present, it should not be prepended again,
+        // and its original position should be maintained by current logic.
+        assert_eq!(result, existing_paths_os);
+    }
+
+    #[test]
+    fn test_generate_prefix_path_empty_new_path_os_existing() {
+        // Test with an empty new_path (though function expects &PathBuf, so it can't be "empty" in PathBuf sense)
+        // This test is more about ensuring behavior with empty existing path.
+        let new_path = PathBuf::from("/opt/rocm-cmake");
+        let empty_existing_path = OsString::from("");
+        let result = generate_updated_cmake_prefix_path(&new_path, Some(empty_existing_path)).unwrap();
+        // split_paths on "" yields a single empty PathBuf.
+        // join_paths on ["/opt/rocm-cmake", ""] (or just ["/opt/rocm-cmake"] if "" is filtered,
+        // which it isn't by split_paths)
+        // PathBuf::from("") is a valid path.
+        // Let's check actual behavior of split_paths and join_paths with empty strings.
+        // env::split_paths("") -> yields one empty path `PathBuf::new("")`
+        // So paths becomes `vec![PathBuf::new("")`
+        // Then we prepend, so `vec![PathBuf::from("/opt/rocm-cmake"), PathBuf::new("")`
+        let expected_paths = vec![PathBuf::from("/opt/rocm-cmake"), PathBuf::new("")];
+        let expected_os = env::join_paths(expected_paths).unwrap();
+        assert_eq!(result, expected_os);
+    }
+
+    #[test]
+    fn test_generate_prefix_path_new_path_is_empty_string() {
+        // PathBuf::from("") is a valid, though unusual, path.
+        let new_path = PathBuf::from("");
+        let existing_paths_os = OsString::from("/usr/local");
+        let result = generate_updated_cmake_prefix_path(&new_path, Some(existing_paths_os.clone())).unwrap();
+
+        // new_path ("") should be prepended if not already there.
+        // Assuming "" is not in ["/usr/local"]
+        let expected_paths = vec![PathBuf::from(""), PathBuf::from("/usr/local")];
+        let expected_os = env::join_paths(expected_paths).unwrap();
+        assert_eq!(result, expected_os);
+    }
 }
