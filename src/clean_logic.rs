@@ -3,16 +3,20 @@ use log::{info, warn};
 use std::fs;
 
 use crate::config::Config;
-use crate::utils::{find_cmake_projects, copy_if_selected, SelectedPurpose};
+use crate::utils::find_cmake_projects; // Removed unused copy_if_selected and SelectedPurpose
 
 pub fn run_clean(config: &Config) -> Result<()> {
     info!("Starting clean process...");
 
     // Determine which packages to clean
-    let all_projects_in_src: Vec<String> = find_cmake_projects(&config.source_dir, None)?
-        .iter()
-        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().into_owned())
-        .collect();
+    let all_projects_in_src: Vec<String> = find_cmake_projects(
+        &config.source_dir,
+        None,
+        config.project_search_depth,
+    )?
+    .iter()
+    .map(|p| p.file_name().unwrap_or_default().to_string_lossy().into_owned())
+    .collect();
     
     let mut packages_to_clean = Vec::new();
     if config.packages.is_empty() {

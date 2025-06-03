@@ -133,7 +133,11 @@ pub fn run_build(config: &Config) -> Result<()> {
 
 
     // 2. Find other CMake projects in the source directory (excluding rocm-cmake itself)
-    let projects = find_cmake_projects(&config.source_dir, Some(&config.rocm_cmake_path))?;
+    let projects = find_cmake_projects(
+        &config.source_dir,
+        Some(&config.rocm_cmake_path),
+        config.project_search_depth,
+    )?;
     if projects.is_empty() && config.packages.iter().any(|p| p != "rocm-cmake") {
          warn!("No other CMake projects found in {}", config.source_dir.display());
     } else if projects.is_empty() && config.packages.is_empty() {
