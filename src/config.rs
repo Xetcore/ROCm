@@ -32,6 +32,9 @@ pub struct Cli {
     #[arg(long, value_name = "DEPTH", help = "Maximum depth to search for CMake projects relative to source_dir (0 for source_dir itself, 1 for immediate subdirs, etc.).")]
     pub project_search_depth: Option<usize>,
 
+    #[arg(long = "source-dir", short = 'S', value_name = "PATH", help = "Specify a source directory to search for projects. Can be used multiple times. If not provided, defaults to the parent directory of rocm-cmake.")]
+    pub source_dirs: Vec<PathBuf>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -55,7 +58,7 @@ pub struct Config {
     pub install_dir: Option<PathBuf>,
     pub packages: Vec<String>,
     pub rocm_cmake_path: PathBuf,
-    pub source_dir: PathBuf, // Root of the rocm-cmake checkout
+    pub source_dirs: Vec<PathBuf>, // Changed from source_dir: PathBuf
     pub build_type: String,
     pub cmake_args: Vec<String>,
     pub jobs: Option<usize>,
@@ -142,10 +145,32 @@ impl Config {
         let final_rocm_cmake_path = rocm_cmake_path_resolved.ok_or_else(||
             anyhow!("'rocm-cmake' directory not found. Set the {} environment variable or run from a directory containing 'rocm-cmake', or one of its parent directories.", ROCM_CMAKE_ENV_VAR)
         )?;
-        let final_source_dir = source_dir_resolved.expect("source_dir should be set if rocm_cmake_path was resolved");
+        // 'source_dir_resolved' here is the parent of rocm-cmake, which becomes the default if --source-dir is not used.
+        let rocm_cmake_parent_dir = source_dir_resolved.expect("source_dir_resolved (parent of rocm-cmake) should be set if rocm_cmake_path was resolved");
 
-        debug!("Determined source directory: {}", final_source_dir.display());
         debug!("Using rocm-cmake path: {}", final_rocm_cmake_path.display());
+        // Determine final source_dirs for project searching
+        let resolved_source_dirs: Vec<PathBuf>;
+        if !cli.source_dirs.is_empty() {
+            info!("Using user-specified source directories via --source-dir argument.");
+            resolved_source_dirs = cli.source_dirs.iter().map(|p| {
+                if p.is_absolute() {
+                    p.clone()
+                } else {
+                    current_dir.join(p) // Make relative paths absolute from the current directory
+                }
+            }).collect();
+            for dir in &resolved_source_dirs {
+                debug!("Effective source directory for project search: {}", dir.display());
+                 if !dir.exists() {
+                    warn!("User-specified source directory {} does not exist.", dir.display());
+                }
+            }
+        } else {
+            info!("No --source-dir specified. Defaulting source directory for project search to parent of rocm-cmake: {}", rocm_cmake_parent_dir.display());
+            resolved_source_dirs = vec![rocm_cmake_parent_dir.clone()];
+        }
+
 
         let resolved_project_search_depth = cli.project_search_depth.unwrap_or(DEFAULT_PROJECT_SEARCH_DEPTH);
         debug!("Effective project search depth set to: {}", resolved_project_search_depth);
@@ -162,7 +187,7 @@ impl Config {
             install_dir,
             packages: cli.packages,
             rocm_cmake_path: final_rocm_cmake_path,
-            source_dir: final_source_dir,
+            source_dirs: resolved_source_dirs, // Use the new resolved_source_dirs
             build_type: cli.build_type.clone(),
             cmake_args: cli.cmake_args.clone(),
             jobs: cli.jobs,
@@ -392,6 +417,8 @@ mod tests {
     }
 
     // --- Tests for rocm-cmake Path Determination ---
+    // Note: These tests implicitly test the default source_dirs logic (parent of rocm-cmake)
+    // New tests will be needed for explicit --source-dir usage.
     #[test]
     fn test_rocm_cmake_path_from_env_valid() {
         run_env_test(|test_env_path| {
@@ -400,11 +427,11 @@ mod tests {
 
             env::set_var("ROCM_CMAKE_PATH", mock_rocm_cmake_dir.to_str().unwrap());
 
-            let cli = Cli::parse_from(["mytool", "build"]);
+            let cli = Cli::parse_from(["mytool", "build"]); // No --source-dir, so should default
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             assert_eq!(config.rocm_cmake_path, mock_rocm_cmake_dir);
-            assert_eq!(config.source_dir, test_env_path); // Parent of rocm-cmake
+            assert_eq!(config.source_dirs, vec![test_env_path.to_path_buf()]); // Default source dir
 
             env::remove_var("ROCM_CMAKE_PATH");
         });
@@ -424,9 +451,8 @@ mod tests {
             let cli = Cli::parse_from(["mytool", "build"]);
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
-            // Should ignore env var due to invalid name and use the discovered one
             assert_eq!(config.rocm_cmake_path, discoverable_rocm_cmake);
-            assert_eq!(config.source_dir, test_env_path);
+            assert_eq!(config.source_dirs, vec![test_env_path.to_path_buf()]); // Default source dir
 
             env::remove_var("ROCM_CMAKE_PATH");
         });
@@ -457,7 +483,7 @@ mod tests {
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             assert_eq!(config.rocm_cmake_path, discoverable_rocm_cmake);
-            assert_eq!(config.source_dir, discoverable_parent);
+            assert_eq!(config.source_dirs, vec![discoverable_parent.to_path_buf()]);
 
             std::env::set_current_dir(original_current_dir).unwrap();
             env::remove_var("ROCM_CMAKE_PATH");
@@ -476,7 +502,7 @@ mod tests {
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             assert_eq!(config.rocm_cmake_path, discoverable_rocm_cmake);
-            assert_eq!(config.source_dir, test_env_path);
+            assert_eq!(config.source_dirs, vec![test_env_path.to_path_buf()]);
         });
     }
 
@@ -505,7 +531,7 @@ mod tests {
             let config = Config::from_cli(cli).expect("Config from CLI failed");
 
             assert_eq!(config.rocm_cmake_path, parent_rocm_cmake);
-            assert_eq!(config.source_dir, temp_path_root);
+            assert_eq!(config.source_dirs, vec![temp_path_root.to_path_buf()]);
 
             // Restore current_dir to what run_env_test expects for its cleanup
             std::env::set_current_dir(original_current_dir).unwrap();
@@ -556,6 +582,123 @@ mod tests {
             assert_eq!(cli.project_search_depth, Some(3));
             let config = Config::from_cli(cli).expect("Config from CLI failed");
             assert_eq!(config.project_search_depth, 3);
+        });
+    }
+
+    // --- Tests for Multiple Source Directories ---
+    #[test]
+    fn test_config_source_dirs_default() {
+        run_env_test(|temp_path| {
+            let rocm_cmake_dir = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&rocm_cmake_dir).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No --source-dir args
+            let config = Config::from_cli(cli).expect("Config from CLI failed for default source_dirs");
+
+            assert_eq!(config.source_dirs.len(), 1, "Default source_dirs should have one entry");
+            assert_eq!(config.source_dirs[0], temp_path.to_path_buf(), "Default source_dir should be parent of rocm-cmake");
+            assert_eq!(config.rocm_cmake_path, rocm_cmake_dir, "rocm_cmake_path should be correctly identified");
+        });
+    }
+
+    #[test]
+    fn test_config_source_dirs_one_absolute() {
+        run_env_test(|temp_path| {
+            let rocm_cmake_dir = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&rocm_cmake_dir).unwrap();
+
+            let user_src_dir_holder = tempfile::tempdir().unwrap(); // Create a separate temp dir for user source
+            let user_src_path = user_src_dir_holder.path().to_path_buf();
+            fs::create_dir_all(&user_src_path).unwrap(); // Ensure it actually exists
+
+            let cli = Cli::parse_from([
+                "mytool",
+                "--source-dir",
+                user_src_path.to_str().unwrap(),
+                "build",
+            ]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed for one absolute source_dir");
+
+            assert_eq!(config.source_dirs.len(), 1, "source_dirs should have one entry");
+            assert_eq!(config.source_dirs[0], user_src_path, "source_dirs should contain the user-specified absolute path");
+        });
+    }
+
+    #[test]
+    fn test_config_source_dirs_one_relative() {
+        run_env_test(|temp_path| { // CWD for the test is temp_path
+            let rocm_cmake_dir = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&rocm_cmake_dir).unwrap();
+
+            let relative_src_dirname = "my_projects_subdir";
+            let user_src_dir_abs = temp_path.join(relative_src_dirname);
+            fs::create_dir_all(&user_src_dir_abs).unwrap();
+
+            let cli = Cli::parse_from(["mytool", "--source-dir", relative_src_dirname, "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed for one relative source_dir");
+
+            assert_eq!(config.source_dirs.len(), 1, "source_dirs should have one entry");
+            assert_eq!(config.source_dirs[0], user_src_dir_abs, "Relative source_dir should be resolved to absolute path");
+        });
+    }
+
+    #[test]
+    fn test_config_source_dirs_multiple() {
+        run_env_test(|temp_path| {
+            let rocm_cmake_dir = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&rocm_cmake_dir).unwrap();
+
+            let user_src_dir1_abs_holder = tempfile::tempdir().unwrap();
+            let user_src_dir1_abs = user_src_dir1_abs_holder.path().to_path_buf();
+            fs::create_dir_all(&user_src_dir1_abs).unwrap();
+
+            let relative_src_dirname = "my_other_projects";
+            let user_src_dir2_abs = temp_path.join(relative_src_dirname); // Relative to temp_path (CWD)
+            fs::create_dir_all(&user_src_dir2_abs).unwrap();
+
+            let cli = Cli::parse_from([
+                "mytool",
+                "--source-dir",
+                user_src_dir1_abs.to_str().unwrap(), // Absolute path
+                "--source-dir",
+                relative_src_dirname, // Relative path
+                "build",
+            ]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed for multiple source_dirs");
+
+            assert_eq!(config.source_dirs.len(), 2, "source_dirs should have two entries");
+
+            let mut sorted_dirs = config.source_dirs.clone();
+            sorted_dirs.sort();
+
+            let mut expected_dirs = vec![user_src_dir1_abs, user_src_dir2_abs];
+            expected_dirs.sort();
+
+            assert_eq!(sorted_dirs, expected_dirs, "Configured source_dirs do not match expected");
+        });
+    }
+
+    #[test]
+    fn test_config_source_dirs_user_specified_non_existent() {
+        run_env_test(|temp_path| {
+            let rocm_cmake_dir = temp_path.join("rocm-cmake");
+            fs::create_dir_all(&rocm_cmake_dir).unwrap();
+
+            let non_existent_dir = temp_path.join("i_do_not_exist");
+            // Do NOT create non_existent_dir
+
+            let cli = Cli::parse_from([
+                "mytool",
+                "--source-dir",
+                non_existent_dir.to_str().unwrap(),
+                "build",
+            ]);
+            // Config::from_cli should still succeed, but log a warning (tested by observation)
+            let config = Config::from_cli(cli).expect("Config::from_cli failed even with non-existent source dir");
+
+            assert_eq!(config.source_dirs.len(), 1);
+            assert_eq!(config.source_dirs[0], non_existent_dir);
+            // The run_build/run_clean logic will later skip this directory with a warning.
         });
     }
 }

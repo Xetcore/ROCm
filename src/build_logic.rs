@@ -3,8 +3,9 @@ use log::{info, warn, debug};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
-use std::env::{self, JoinPathsError}; // Modified to bring JoinPathsError into scope
-use std::ffi::OsString; // Added for OsString type
+use std::env::{self, JoinPathsError};
+use std::ffi::OsString;
+use std::collections::HashSet; // Added HashSet
 
 use crate::config::Config;
 use crate::utils::{run_command, find_cmake_projects, is_package_selected, SelectedPurpose};
@@ -133,15 +134,37 @@ pub fn run_build(config: &Config) -> Result<()> {
 
 
     // 2. Find other CMake projects in the source directory (excluding rocm-cmake itself)
-    let projects = find_cmake_projects(
-        &config.source_dir,
-        Some(&config.rocm_cmake_path),
-        config.project_search_depth,
-    )?;
+    let mut all_found_projects_set: HashSet<PathBuf> = HashSet::new();
+    info!("Searching for projects in specified source directories...");
+    for src_dir in &config.source_dirs {
+        if !src_dir.is_dir() {
+            warn!("Source directory {} does not exist or is not a directory. Skipping.", src_dir.display());
+            continue;
+        }
+        debug!("Searching for projects in source directory: {}", src_dir.display());
+        match find_cmake_projects(
+            src_dir,
+            Some(&config.rocm_cmake_path), // Exclude rocm-cmake if found within this src_dir
+            config.project_search_depth,
+        ) {
+            Ok(found_in_src_dir) => {
+                for project_path in found_in_src_dir {
+                    all_found_projects_set.insert(project_path);
+                }
+            }
+            Err(e) => {
+                warn!("Failed to find projects in source directory {}: {}. Skipping this directory.", src_dir.display(), e);
+            }
+        }
+    }
+    let mut projects: Vec<PathBuf> = all_found_projects_set.into_iter().collect();
+    projects.sort(); // Sort for consistent processing order
+
     if projects.is_empty() && config.packages.iter().any(|p| p != "rocm-cmake") {
-         warn!("No other CMake projects found in {}", config.source_dir.display());
+        // Adjusted warning for potentially multiple source_dirs
+        warn!("No CMake projects found in any specified source directories.");
     } else if projects.is_empty() && config.packages.is_empty() {
-        info!("No other CMake projects found besides rocm-cmake. Build process might be targeting rocm-cmake only or the source directory is empty.");
+        info!("No other CMake projects found besides potentially rocm-cmake. Build process might be targeting rocm-cmake only or source directories are effectively empty.");
     }
 
 
