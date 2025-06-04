@@ -1,7 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
 use env_logger::Env;
-use log::{info, error};
+use log::{info, error, debug, warn}; // Added debug and warn
+use dotenvy; // Added dotenvy
 
 mod build_logic;
 mod clean_logic;
@@ -12,10 +13,26 @@ mod utils;
 use config::{Cli, Commands, Config};
 
 fn main() -> Result<()> {
+    let dotenv_result = dotenvy::dotenv();
+
     let cli = Cli::parse();
 
     let default_log_level = if cli.verbose { "debug" } else { "info" };
     env_logger::Builder::from_env(Env::default().default_filter_or(default_log_level)).init();
+
+    // Log .env loading status after logger is initialized
+    match dotenv_result {
+        Ok(path) => {
+            info!("Loaded environment variables from: {}", path.display());
+        }
+        Err(e) => {
+            if e.is_io() && e.as_io_error().map_or(false, |io_err| io_err.kind() == std::io::ErrorKind::NotFound) {
+                debug!(".env file not found or not readable. Using system/shell environment variables only for initial setup.");
+            } else {
+                warn!("Failed to load .env file: {}. Using system/shell environment variables only for initial setup.", e);
+            }
+        }
+    }
 
     let config = match Config::from_cli(cli.clone()) {
         Ok(cfg) => cfg,
