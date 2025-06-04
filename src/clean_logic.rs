@@ -1,22 +1,44 @@
 use anyhow::{Context, Result};
-use log::{info, warn};
+use log::{info, warn, debug}; // Added debug
 use std::fs;
+use std::path::PathBuf; // Added PathBuf
+use std::collections::HashSet; // Added HashSet
 
 use crate::config::Config;
-use crate::utils::find_cmake_projects; // Removed unused copy_if_selected and SelectedPurpose
+use crate::utils::find_cmake_projects;
 
 pub fn run_clean(config: &Config) -> Result<()> {
     info!("Starting clean process...");
 
     // Determine which packages to clean
-    let all_projects_in_src: Vec<String> = find_cmake_projects(
-        &config.source_dir,
-        None,
-        config.project_search_depth,
-    )?
-    .iter()
-    .map(|p| p.file_name().unwrap_or_default().to_string_lossy().into_owned())
-    .collect();
+    let mut all_found_project_paths_set: HashSet<PathBuf> = HashSet::new();
+    info!("Discovering projects for cleaning from specified source directories...");
+    for src_dir in &config.source_dirs {
+        if !src_dir.is_dir() {
+            warn!("Source directory {} for cleaning does not exist or is not a directory. Skipping.", src_dir.display());
+            continue;
+        }
+        debug!("Searching for projects to clean in source directory: {}", src_dir.display());
+        match find_cmake_projects(
+            src_dir,
+            None, // For cleaning, do not exclude rocm-cmake from discovery
+            config.project_search_depth,
+        ) {
+            Ok(found_in_src_dir) => {
+                for project_path in found_in_src_dir {
+                    all_found_project_paths_set.insert(project_path);
+                }
+            }
+            Err(e) => {
+                warn!("Failed to find projects for cleaning in source directory {}: {}. Skipping this directory.", src_dir.display(), e);
+            }
+        }
+    }
+
+    let all_projects_in_src: Vec<String> = all_found_project_paths_set
+        .iter()
+        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().into_owned())
+        .collect();
     
     let mut packages_to_clean = Vec::new();
     if config.packages.is_empty() {
