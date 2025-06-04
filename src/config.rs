@@ -21,8 +21,8 @@ pub struct Cli {
     #[arg(long, default_value_t = false, help = "Enable verbose output")]
     pub verbose: bool,
 
-    #[arg(long, value_name = "TYPE", default_value = "Release", help = "CMake build type (e.g., Release, Debug)")]
-    pub build_type: String,
+    #[arg(long, value_name = "TYPE", help = "CMake build type (e.g., Release, Debug)")]
+    pub build_type: Option<String>, // Changed to Option<String>, removed default_value
 
     #[arg(long = "cmake-arg", value_name = "ARG", help = "Custom arguments to pass to CMake configure (e.g., -DVAR=VAL). Can be used multiple times.")]
     pub cmake_args: Vec<String>,
@@ -267,6 +267,36 @@ impl Config {
         });
         debug!("Effective project search depth set to: {}", resolved_project_search_depth);
 
+        // Resolve build_type: CLI > Config File > Default ("Release")
+        const DEFAULT_BUILD_TYPE: &str = "Release";
+        let resolved_build_type = cli.build_type.clone().or_else(|| {
+            loaded_config_values.as_ref().and_then(|cfg| {
+                cfg.default_build_type.as_ref().map(|bt| {
+                    info!("Using 'default_build_type: {}' from configuration file.", bt);
+                    bt.clone()
+                })
+            })
+        }).unwrap_or_else(|| {
+            info!("No --build-type CLI option or config value. Using default build type '{}'.", DEFAULT_BUILD_TYPE);
+            DEFAULT_BUILD_TYPE.to_string()
+        });
+        debug!("Effective build type set to: {}", resolved_build_type);
+
+        // Resolve jobs: CLI > Config File > None
+        let resolved_jobs: Option<usize> = cli.jobs.or_else(|| {
+            loaded_config_values.as_ref().and_then(|cfg| {
+                cfg.default_jobs.map(|j| {
+                    info!("Using 'default_jobs: {}' from configuration file.", j);
+                    j
+                })
+            })
+        });
+        if resolved_jobs.is_none() {
+             info!("No --jobs CLI option or 'default_jobs' in config. CMake default parallelism will be used.");
+        } else {
+            debug!("Effective jobs count set to: {:?}", resolved_jobs);
+        }
+
         fs::create_dir_all(&build_dir)
             .with_context(|| format!("Failed to create build directory: {}", build_dir.display()))?;
         if let Some(ref idir) = install_dir {
@@ -279,10 +309,10 @@ impl Config {
             install_dir,
             packages: cli.packages,
             rocm_cmake_path: final_rocm_cmake_path,
-            source_dirs: resolved_source_dirs, // Use the new resolved_source_dirs
-            build_type: cli.build_type.clone(),
+            source_dirs: resolved_source_dirs,
+            build_type: resolved_build_type, // Use resolved value
             cmake_args: cli.cmake_args.clone(),
-            jobs: cli.jobs,
+            jobs: resolved_jobs, // Use resolved value
             project_search_depth: resolved_project_search_depth,
         })
     }
@@ -304,6 +334,10 @@ pub(crate) struct AppConfigFile {
     pub rocm_cmake_path: Option<PathBuf>,
     pub default_project_search_depth: Option<usize>,
     pub default_source_dirs: Option<Vec<PathBuf>>,
+
+    // New fields for this plan step
+    pub default_build_type: Option<String>,
+    pub default_jobs: Option<usize>,
 }
 
 pub(crate) fn load_config_file(config_path: &Path) -> Result<Option<AppConfigFile>> {
@@ -1137,6 +1171,79 @@ mod tests {
             assert_eq!(config.source_dirs.len(), 1);
             assert_eq!(config.source_dirs[0], rocm_cmake_parent_for_default, "Should use default rocm-cmake parent");
             env::remove_var("ROCM_CMAKE_PATH");
+        });
+    }
+
+    // --- Tests for build_type and jobs Precedence ---
+    #[test]
+    fn test_build_type_cli_over_config_over_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_build_type = \"Debug\"");
+
+            let cli = Cli::parse_from(["mytool", "--build-type", "CustomBuild", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.build_type, "CustomBuild"); // CLI wins
+        });
+    }
+
+    #[test]
+    fn test_build_type_config_over_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_build_type = \"Debug\"");
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No --build-type CLI
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.build_type, "Debug"); // Config wins
+        });
+    }
+
+    #[test]
+    fn test_build_type_code_default_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_build_type");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.build_type, "Release"); // Code default "Release"
+        });
+    }
+
+    #[test]
+    fn test_jobs_cli_over_config() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_jobs = 4");
+
+            let cli = Cli::parse_from(["mytool", "--jobs", "8", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.jobs, Some(8)); // CLI wins
+        });
+    }
+
+    #[test]
+    fn test_jobs_config_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_jobs = 4");
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No --jobs CLI
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.jobs, Some(4)); // Config value used
+        });
+    }
+
+    #[test]
+    fn test_jobs_none_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_jobs");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.jobs, None); // None is used
         });
     }
 }
