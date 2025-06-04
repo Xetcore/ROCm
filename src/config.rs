@@ -289,6 +289,30 @@ impl Config {
             resolved_source_dirs = vec![rocm_cmake_parent_dir.clone()];
         }
 
+        // Resolve target packages: CLI > Config File > Empty (all projects)
+        let resolved_packages: Vec<String>;
+        if !cli.packages.is_empty() {
+            info!("Using packages specified via CLI arguments: {:?}", cli.packages);
+            resolved_packages = cli.packages.clone();
+        } else if let Some(cfg_default_packages) = loaded_config_values.as_ref().and_then(|cfg| cfg.default_packages.as_ref()) {
+            if !cfg_default_packages.is_empty() {
+                info!("Using 'default_packages' from configuration file: {:?}", cfg_default_packages);
+                resolved_packages = cfg_default_packages.clone();
+            } else {
+                info!("'default_packages' in configuration file is empty. Targeting all discovered projects.");
+                resolved_packages = Vec::new();
+            }
+        } else {
+            info!("No packages specified via CLI or in configuration file 'default_packages'. Targeting all discovered projects.");
+            resolved_packages = Vec::new();
+        }
+
+        if !resolved_packages.is_empty() {
+            debug!("Effective target packages set to: {:?}", resolved_packages);
+        } else {
+            debug!("Effective target packages: all discovered projects.");
+        }
+
         // Resolve project_search_depth: CLI > Config File > Default
         let resolved_project_search_depth = cli.project_search_depth.or_else(|| {
             loaded_config_values.as_ref().and_then(|cfg| {
@@ -343,8 +367,8 @@ impl Config {
 
         Ok(Config {
             build_dir: resolved_build_dir,     // Use resolved value
-            install_dir: resolved_install_dir, // Use resolved value
-            packages: cli.packages,
+            install_dir: resolved_install_dir,
+            packages: resolved_packages, // Use resolved value
             rocm_cmake_path: final_rocm_cmake_path,
             source_dirs: resolved_source_dirs,
             build_type: resolved_build_type, // Use resolved value
@@ -373,10 +397,11 @@ pub(crate) struct AppConfigFile {
     pub default_source_dirs: Option<Vec<PathBuf>>,
     pub default_build_type: Option<String>,
     pub default_jobs: Option<usize>,
-
-    // New fields for this plan step
     pub default_build_dir: Option<PathBuf>,
     pub default_install_dir: Option<PathBuf>,
+
+    // New field for this plan step
+    pub default_packages: Option<Vec<String>>,
 }
 
 pub(crate) fn load_config_file(config_path: &Path) -> Result<Option<AppConfigFile>> {
@@ -1431,6 +1456,59 @@ mod tests {
             let config_2 = Config::from_cli(cli_args_2).expect("Config from CLI failed for config relative path");
             assert_eq!(config_2.install_dir, Some(temp_path.join("my_config_install/path")));
             assert!(config_2.install_dir.as_ref().unwrap().exists());
+        });
+    }
+
+    // --- Tests for packages Precedence ---
+    #[test]
+    fn test_packages_cli_over_config() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = [\"pkg_cfg_a\", \"pkg_cfg_b\"]");
+
+            let cli = Cli::parse_from(["mytool", "-p", "pkg_cli_x", "-p", "pkg_cli_y", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.packages, vec!["pkg_cli_x".to_string(), "pkg_cli_y".to_string()], "CLI packages should win");
+        });
+    }
+
+    #[test]
+    fn test_packages_config_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = [\"pkg_cfg_a\", \"pkg_cfg_b\"]");
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No -p or --packages
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.packages, vec!["pkg_cfg_a".to_string(), "pkg_cfg_b".to_string()], "Config default_packages should be used");
+        });
+    }
+
+    #[test]
+    fn test_packages_default_all_projects_if_cli_and_config_none() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_packages key");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert!(config.packages.is_empty(), "Packages list should be empty for 'all projects' default");
+        });
+    }
+
+    #[test]
+    fn test_packages_config_empty_list_means_all_projects() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = []"); // Config default_packages is empty list
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert!(config.packages.is_empty(), "Packages list should be empty if config default_packages is an empty list");
         });
     }
 }
