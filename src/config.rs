@@ -22,7 +22,7 @@ pub struct Cli {
     pub verbose: bool,
 
     #[arg(long, value_name = "TYPE", help = "CMake build type (e.g., Release, Debug)")]
-    pub build_type: Option<String>, // Changed to Option<String>, removed default_value
+    pub build_type: Option<String>,
 
     #[arg(long = "cmake-arg", value_name = "ARG", help = "Custom arguments to pass to CMake configure (e.g., -DVAR=VAL). Can be used multiple times.")]
     pub cmake_args: Vec<String>,
@@ -109,23 +109,59 @@ impl Config {
         }
 
         // --- End Load Configuration File ---
-        
-        let build_dir = if cli.build_dir.is_absolute() {
-            cli.build_dir
-        } else {
-            current_dir.join(cli.build_dir)
-        };
-        debug!("Resolved build directory: {}", build_dir.display());
 
-        let install_dir = cli.install_dir.map(|p| {
-            if p.is_absolute() {
-                p
-            } else {
-                current_dir.join(p)
-            }
+        // Resolve build_dir: CLI > Config File > Default ("./build")
+        const DEFAULT_BUILD_DIR_STR: &str = "./build";
+        let mut build_dir_source_log = "hardcoded default";
+
+        let temp_build_dir_path = cli.build_dir.clone().map(|p_cli| {
+            build_dir_source_log = "CLI argument";
+            debug!("Build directory specified via CLI: {}", p_cli.display());
+            p_cli
+        }).or_else(|| {
+            loaded_config_values.as_ref().and_then(|cfg| cfg.default_build_dir.as_ref().map(|p_cfg| {
+                build_dir_source_log = "configuration file";
+                info!("Using 'default_build_dir: {}' from configuration file.", p_cfg.display());
+                p_cfg.clone()
+            }))
+        }).unwrap_or_else(|| {
+            info!("No --build-dir CLI option or 'default_build_dir' in config. Using default build directory '{}'.", DEFAULT_BUILD_DIR_STR);
+            PathBuf::from(DEFAULT_BUILD_DIR_STR)
         });
-        if let Some(ref idir) = install_dir {
-            debug!("Resolved install directory: {}", idir.display());
+
+        let resolved_build_dir = if temp_build_dir_path.is_absolute() {
+            temp_build_dir_path
+        } else {
+            current_dir.join(temp_build_dir_path)
+        };
+        info!("Effective build directory set to: {} (determined by {})", resolved_build_dir.display(), build_dir_source_log);
+
+        // Resolve install_dir: CLI > Config File > None
+        let mut install_dir_source_log = "none (default)";
+        let temp_install_dir_opt_path = cli.install_dir.clone().map(|p_cli| {
+            install_dir_source_log = "CLI argument";
+            debug!("Install directory specified via CLI: {}", p_cli.display());
+            p_cli
+        }).or_else(|| {
+            loaded_config_values.as_ref().and_then(|cfg| cfg.default_install_dir.as_ref().map(|p_cfg| {
+                install_dir_source_log = "configuration file";
+                info!("Using 'default_install_dir: {}' from configuration file.", p_cfg.display());
+                p_cfg.clone()
+            }))
+        });
+
+        let resolved_install_dir = temp_install_dir_opt_path.map(|p_opt| {
+            let p_abs = if p_opt.is_absolute() {
+                p_opt
+            } else {
+                current_dir.join(p_opt)
+            };
+            debug!("Effective install directory (from {}): {}", install_dir_source_log, p_abs.display());
+            p_abs
+        });
+
+        if resolved_install_dir.is_none() && install_dir_source_log == "none (default)" {
+            info!("No --install-dir CLI option or 'default_install_dir' in config. No installation will be performed by default.");
         }
 
         // --- Resolve rocm_cmake_path and its parent (initial_source_dir_for_rocm_cmake) ---
@@ -253,6 +289,30 @@ impl Config {
             resolved_source_dirs = vec![rocm_cmake_parent_dir.clone()];
         }
 
+        // Resolve target packages: CLI > Config File > Empty (all projects)
+        let resolved_packages: Vec<String>;
+        if !cli.packages.is_empty() {
+            info!("Using packages specified via CLI arguments: {:?}", cli.packages);
+            resolved_packages = cli.packages.clone();
+        } else if let Some(cfg_default_packages) = loaded_config_values.as_ref().and_then(|cfg| cfg.default_packages.as_ref()) {
+            if !cfg_default_packages.is_empty() {
+                info!("Using 'default_packages' from configuration file: {:?}", cfg_default_packages);
+                resolved_packages = cfg_default_packages.clone();
+            } else {
+                info!("'default_packages' in configuration file is empty. Targeting all discovered projects.");
+                resolved_packages = Vec::new();
+            }
+        } else {
+            info!("No packages specified via CLI or in configuration file 'default_packages'. Targeting all discovered projects.");
+            resolved_packages = Vec::new();
+        }
+
+        if !resolved_packages.is_empty() {
+            debug!("Effective target packages set to: {:?}", resolved_packages);
+        } else {
+            debug!("Effective target packages: all discovered projects.");
+        }
+
         // Resolve project_search_depth: CLI > Config File > Default
         let resolved_project_search_depth = cli.project_search_depth.or_else(|| {
             loaded_config_values.as_ref().and_then(|cfg| {
@@ -297,17 +357,18 @@ impl Config {
             debug!("Effective jobs count set to: {:?}", resolved_jobs);
         }
 
-        fs::create_dir_all(&build_dir)
-            .with_context(|| format!("Failed to create build directory: {}", build_dir.display()))?;
-        if let Some(ref idir) = install_dir {
-            fs::create_dir_all(idir)
-                .with_context(|| format!("Failed to create install directory: {}", idir.display()))?;
+        // Create directories at the end, using the final resolved paths
+        fs::create_dir_all(&resolved_build_dir)
+            .with_context(|| format!("Failed to create build directory: {}", resolved_build_dir.display()))?;
+        if let Some(ref r_idir) = resolved_install_dir {
+            fs::create_dir_all(r_idir)
+                .with_context(|| format!("Failed to create install directory: {}", r_idir.display()))?;
         }
 
         Ok(Config {
-            build_dir,
-            install_dir,
-            packages: cli.packages,
+            build_dir: resolved_build_dir,     // Use resolved value
+            install_dir: resolved_install_dir,
+            packages: resolved_packages, // Use resolved value
             rocm_cmake_path: final_rocm_cmake_path,
             source_dirs: resolved_source_dirs,
             build_type: resolved_build_type, // Use resolved value
@@ -334,10 +395,13 @@ pub(crate) struct AppConfigFile {
     pub rocm_cmake_path: Option<PathBuf>,
     pub default_project_search_depth: Option<usize>,
     pub default_source_dirs: Option<Vec<PathBuf>>,
-
-    // New fields for this plan step
     pub default_build_type: Option<String>,
     pub default_jobs: Option<usize>,
+    pub default_build_dir: Option<PathBuf>,
+    pub default_install_dir: Option<PathBuf>,
+
+    // New field for this plan step
+    pub default_packages: Option<Vec<String>>,
 }
 
 pub(crate) fn load_config_file(config_path: &Path) -> Result<Option<AppConfigFile>> {
@@ -1244,6 +1308,207 @@ mod tests {
             let cli = Cli::parse_from(["mytool", "build"]);
             let config = Config::from_cli(cli).expect("Config from CLI failed");
             assert_eq!(config.jobs, None); // None is used
+        });
+    }
+
+    // --- Tests for build_dir and install_dir Precedence with Config File ---
+    #[test]
+    fn test_build_dir_cli_over_config_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            let config_build_dir_rel = "config_build";
+            create_temp_config_file(temp_path, &format!("default_build_dir = \"{}\"", config_build_dir_rel));
+
+            let cli_build_dir_rel = "cli_build";
+            let cli_build_dir_abs = temp_path.join(cli_build_dir_rel);
+
+            let cli = Cli::parse_from(["mytool", "--build-dir", cli_build_dir_rel, "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.build_dir, cli_build_dir_abs, "CLI build_dir should win");
+            assert!(config.build_dir.exists(), "Build directory should be created by Config::from_cli");
+        });
+    }
+
+    #[test]
+    fn test_build_dir_config_over_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            let config_build_dir_rel = "config_build_dir_val";
+            let config_build_dir_abs = temp_path.join(config_build_dir_rel);
+            create_temp_config_file(temp_path, &format!("default_build_dir = \"{}\"", config_build_dir_rel));
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No --build-dir CLI
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.build_dir, config_build_dir_abs, "Config build_dir should win over code default");
+            assert!(config.build_dir.exists());
+        });
+    }
+
+    #[test]
+    fn test_build_dir_default_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_build_dir in config");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            let expected_default_build_dir = temp_path.join("./build");
+            assert_eq!(config.build_dir, expected_default_build_dir, "Default build_dir should be used");
+            assert!(config.build_dir.exists());
+        });
+    }
+
+    #[test]
+    fn test_build_dir_relative_paths_resolved() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_build_dir = \"my_config_build/path\"");
+
+            let cli_args_1 = Cli::parse_from(["mytool", "--build-dir", "my_cli_build/path", "build"]);
+            let config_1 = Config::from_cli(cli_args_1).expect("Config from CLI failed for CLI relative path");
+            assert_eq!(config_1.build_dir, temp_path.join("my_cli_build/path"));
+            assert!(config_1.build_dir.exists());
+
+            // Clean up for next part of test by removing the first cli_build dir if it was created in temp_path
+            if fs::metadata(temp_path.join("my_cli_build/path")).is_ok() {
+                 fs::remove_dir_all(temp_path.join("my_cli_build/path")).unwrap();
+            }
+            // Also, ensure the config default build dir is removed before re-running Config::from_cli without CLI arg
+            if fs::metadata(temp_path.join("my_config_build/path")).is_ok() {
+                fs::remove_dir_all(temp_path.join("my_config_build/path")).unwrap();
+            }
+
+
+            let cli_args_2 = Cli::parse_from(["mytool", "build"]); // No --build-dir, should use config
+            let config_2 = Config::from_cli(cli_args_2).expect("Config from CLI failed for config relative path");
+            assert_eq!(config_2.build_dir, temp_path.join("my_config_build/path"));
+            assert!(config_2.build_dir.exists());
+        });
+    }
+
+    #[test]
+    fn test_install_dir_cli_over_config_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_install_dir = \"config/install\"");
+
+            let cli_install_dir_rel = "cli/install";
+            let cli_install_dir_abs = temp_path.join(cli_install_dir_rel);
+
+            let cli = Cli::parse_from(["mytool", "--install-dir", cli_install_dir_rel, "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.install_dir, Some(cli_install_dir_abs), "CLI install_dir should win");
+            assert!(config.install_dir.as_ref().unwrap().exists(), "Install directory should be created");
+        });
+    }
+
+    #[test]
+    fn test_install_dir_config_over_default() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            let config_install_dir_rel = "config_install_dir_val";
+            let config_install_dir_abs = temp_path.join(config_install_dir_rel);
+            create_temp_config_file(temp_path, &format!("default_install_dir = \"{}\"", config_install_dir_rel));
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No --install-dir CLI
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.install_dir, Some(config_install_dir_abs), "Config install_dir should win over code default (None)");
+            assert!(config.install_dir.as_ref().unwrap().exists());
+        });
+    }
+
+    #[test]
+    fn test_install_dir_default_none_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_install_dir");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+            assert_eq!(config.install_dir, None, "Default install_dir (None) should be used");
+        });
+    }
+
+    #[test]
+    fn test_install_dir_relative_paths_resolved() {
+         run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_install_dir = \"my_config_install/path\"");
+
+            let cli_args_1 = Cli::parse_from(["mytool", "--install-dir", "my_cli_install/path", "build"]);
+            let config_1 = Config::from_cli(cli_args_1).expect("Config from CLI failed for CLI relative path");
+            assert_eq!(config_1.install_dir, Some(temp_path.join("my_cli_install/path")));
+            assert!(config_1.install_dir.as_ref().unwrap().exists());
+
+            if fs::metadata(temp_path.join("my_cli_install/path")).is_ok() {
+                fs::remove_dir_all(temp_path.join("my_cli_install/path")).unwrap();
+            }
+            if fs::metadata(temp_path.join("my_config_install/path")).is_ok() {
+                fs::remove_dir_all(temp_path.join("my_config_install/path")).unwrap();
+            }
+
+            let cli_args_2 = Cli::parse_from(["mytool", "build"]); // No --install-dir, should use config
+            let config_2 = Config::from_cli(cli_args_2).expect("Config from CLI failed for config relative path");
+            assert_eq!(config_2.install_dir, Some(temp_path.join("my_config_install/path")));
+            assert!(config_2.install_dir.as_ref().unwrap().exists());
+        });
+    }
+
+    // --- Tests for packages Precedence ---
+    #[test]
+    fn test_packages_cli_over_config() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = [\"pkg_cfg_a\", \"pkg_cfg_b\"]");
+
+            let cli = Cli::parse_from(["mytool", "-p", "pkg_cli_x", "-p", "pkg_cli_y", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.packages, vec!["pkg_cli_x".to_string(), "pkg_cli_y".to_string()], "CLI packages should win");
+        });
+    }
+
+    #[test]
+    fn test_packages_config_used() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = [\"pkg_cfg_a\", \"pkg_cfg_b\"]");
+
+            let cli = Cli::parse_from(["mytool", "build"]); // No -p or --packages
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert_eq!(config.packages, vec!["pkg_cfg_a".to_string(), "pkg_cfg_b".to_string()], "Config default_packages should be used");
+        });
+    }
+
+    #[test]
+    fn test_packages_default_all_projects_if_cli_and_config_none() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "# No default_packages key");
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert!(config.packages.is_empty(), "Packages list should be empty for 'all projects' default");
+        });
+    }
+
+    #[test]
+    fn test_packages_config_empty_list_means_all_projects() {
+        run_env_test(|temp_path| {
+            fs::create_dir_all(temp_path.join("rocm-cmake")).unwrap();
+            create_temp_config_file(temp_path, "default_packages = []"); // Config default_packages is empty list
+
+            let cli = Cli::parse_from(["mytool", "build"]);
+            let config = Config::from_cli(cli).expect("Config from CLI failed");
+
+            assert!(config.packages.is_empty(), "Packages list should be empty if config default_packages is an empty list");
         });
     }
 }
